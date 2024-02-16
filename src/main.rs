@@ -1,4 +1,8 @@
-use std::{env, io};
+use std::{
+    env,
+    error::Error,
+    io::{self, Stderr},
+};
 
 use crate::{
     config::Config,
@@ -24,13 +28,17 @@ mod spectrum;
 mod util;
 mod vector;
 
-fn main() -> io::Result<()> {
-    println!("Hello, world!");
+fn main() {
+    if let Err(e) = execute() {
+        eprintln!("An error occurred: {e}");
+    }
+}
+
+fn execute() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
-    let config = Config::parse(args);
+    let config = Config::parse(args)?;
     let integrator = MmltIntegrator::new();
-    let scene = Scene::new();
+    let scene = Scene::load(config.scene_path)?;
     let image = integrator.integrate(&scene);
-    image.write("foo.image")?;
-    Ok(())
+    image.write(config.image_path)
 }

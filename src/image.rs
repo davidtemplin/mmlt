@@ -1,6 +1,6 @@
 use std::{
     fs::File,
-    io::{LineWriter, Result, Write},
+    io::{self, LineWriter, Write},
 };
 
 use crate::spectrum::Spectrum;
@@ -25,17 +25,22 @@ impl Image {
         self.pixels[i] = self.pixels[i] + spectrum;
     }
 
-    pub fn write(&self, path: &str) -> Result<()> {
-        let file = File::create(path)?;
-        let mut writer = LineWriter::new(file);
-        writeln!(writer, "PF")?;
-        writeln!(writer, "{} {}", self.width, self.height)?;
-        writeln!(writer, "-1.0")?;
-        for pixel in &self.pixels {
-            let rgb = pixel.to_rgb();
-            writeln!(writer, "{} {} {}", rgb.r, rgb.g, rgb.b)?;
-        }
-        writer.flush()?;
-        Ok(())
+    pub fn write(&self, path: String) -> Result<(), String> {
+        let w = || {
+            let file = File::create(path)?;
+            let mut writer = LineWriter::new(file);
+            writeln!(writer, "PF")?;
+            writeln!(writer, "{} {}", self.width, self.height)?;
+            writeln!(writer, "-1.0")?;
+            for pixel in &self.pixels {
+                let rgb = pixel.to_rgb();
+                writeln!(writer, "{} {} {}", rgb.r, rgb.g, rgb.b)?;
+            }
+            writer.flush()?;
+            Ok(())
+        };
+
+        let result = w();
+        result.map_err(|e: io::Error| e.to_string())
     }
 }

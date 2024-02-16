@@ -1,7 +1,10 @@
-pub struct Config {}
+pub struct Config {
+    pub scene_path: String,
+    pub image_path: String,
+}
 
 impl Config {
-    pub fn parse(_args: Vec<String>) -> Config {
-        Config {}
+    pub fn parse(args: Vec<String>) -> Result<Config, String> {
+        todo!()
     }
 }

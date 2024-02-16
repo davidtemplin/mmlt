@@ -7,10 +7,12 @@ pub struct Scene {
     pub camera: Box<dyn Camera>,
     pub lights: Vec<Box<dyn Light>>,
     pub objects: Vec<Box<dyn Object>>,
+    pub x_resolution: usize,
+    pub y_resolution: usize,
 }
 
 impl Scene {
-    pub fn new() -> Scene {
+    pub fn load(path: String) -> Result<Scene, String> {
         todo!()
     }
 

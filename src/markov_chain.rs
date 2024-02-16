@@ -52,8 +52,18 @@ pub enum MutationType {
 }
 
 impl MarkovChain {
-    pub fn new() -> MarkovChain {
-        todo!()
+    pub fn new(stream_count: usize) -> MarkovChain {
+        MarkovChain {
+            large_step_probability: 0.3,
+            sigma: 0.01,
+            stream_count,
+            stream_index: 0,
+            sample_index: 0,
+            state: Vec::new(),
+            iteration: 0,
+            large_step_at: 0,
+            large_step: false,
+        }
     }
 
     pub fn mutate(&mut self) -> MutationType {

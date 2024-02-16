@@ -36,7 +36,7 @@ impl Integrator for MmltIntegrator {
 
         for k in 1..self.max_path_lenth {
             for _ in 1..self.initial_sample_count {
-                let mut chain = MarkovChain::new();
+                let mut chain = MarkovChain::new(3); // TODO: needs to be consistent with Path; maybe Path::chain() factory method?
                 if let Some(path) = Path::generate(scene, &mut chain, k) {
                     let contribution = path.contribution();
                     b[k] = b[k] + contribution.scalar;
@@ -50,7 +50,7 @@ impl Integrator for MmltIntegrator {
         let mut contributions: Vec<Contribution> = Vec::new();
 
         for k in 1..self.max_path_lenth {
-            let mut chain = MarkovChain::new();
+            let mut chain = MarkovChain::new(3);
             if let Some(path) = Path::generate(scene, &mut chain, k) {
                 let contribution = path.contribution();
                 chains[k] = chain;
@@ -62,7 +62,7 @@ impl Integrator for MmltIntegrator {
 
         let mut image = Image::new();
 
-        let pixel_count = 0; //scene.camera.pixel_count; TODO!
+        let pixel_count = (scene.x_resolution * scene.y_resolution) as u64;
 
         while sample_count / pixel_count < self.average_samples_per_pixel {
             sample_count = sample_count + 1;

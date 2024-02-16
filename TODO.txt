@@ -1,0 +1,17 @@
+* Define Material and Texture interface
+* Define scene file format
+* Write parser for scene files
+* Write config parser for command-line arguments
+* Change Object from trait to struct.
+  -- Contains a material, shape, etc.
+  -- Rename to Primitive?
+* Use Geometry abstraction?
+  -- Contains position, direction, normal, 2D parameterization, etc.
+  -- Interactions contain a Geometry instance, plus the underlying Object, Camera, Light, etc.
+* Implement ConstantTexture
+* Implement MatteMaterial
+* Implement Sphere shape
+* Implement Parallelogram (or Rectangle?) shape
+* Implement image filters
+
+The initial test scene will use constant textures, matte materials, rectangles, area lights, pinhole camera, one sphere.
