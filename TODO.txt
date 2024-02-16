@@ -2,9 +2,12 @@
 * Define scene file format
 * Write parser for scene files
 * Write config parser for command-line arguments
-* Change Object from trait to struct.
-  -- Contains a material, shape, etc.
-  -- Rename to Primitive?
+* Object update:
+  -- Rename to Primitive
+  -- GeometricPrimitive struct
+    -- Contains a material, shape, etc.
+  -- Aggregate Primitives:
+    -- BVH, KD-Tree, etc.
 * Use Geometry abstraction?
   -- Contains position, direction, normal, 2D parameterization, etc.
   -- Interactions contain a Geometry instance, plus the underlying Object, Camera, Light, etc.
