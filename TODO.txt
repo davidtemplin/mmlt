@@ -1,4 +1,4 @@
-* Define Material and Texture interface
+* Define Material and Texture interface and texture mapping
 * Define scene file format
 * Write parser for scene files
 * Write config parser for command-line arguments
@@ -8,8 +8,9 @@
     -- Contains a material, shape, etc.
   -- Aggregate Primitives:
     -- BVH, KD-Tree, etc.
+* Rename Intersection to Interaction
 * Use Geometry abstraction?
-  -- Contains position, direction, normal, 2D parameterization, etc.
+  -- Contains position, direction, normal, 2D parameterization, etc.; basic DTO to make copying data and passing parameters easier
   -- Interactions contain a Geometry instance, plus the underlying Object, Camera, Light, etc.
 * Implement ConstantTexture
 * Implement MatteMaterial

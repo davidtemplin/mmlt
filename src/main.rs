@@ -1,8 +1,4 @@
-use std::{
-    env,
-    error::Error,
-    io::{self, Stderr},
-};
+use std::env;
 
 use crate::{
     config::Config,
@@ -10,6 +6,7 @@ use crate::{
     scene::Scene,
 };
 
+mod bsdf;
 mod camera;
 mod config;
 mod image;
@@ -17,6 +14,7 @@ mod integrator;
 mod intersection;
 mod light;
 mod markov_chain;
+mod material;
 mod object;
 mod path;
 mod pdf;
@@ -25,6 +23,7 @@ mod sampler;
 mod scene;
 mod shape;
 mod spectrum;
+mod texture;
 mod util;
 mod vector;
 

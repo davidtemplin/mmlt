@@ -2,6 +2,10 @@
 image:
   width: 512
   height: 512
+  filter:
+    type: gaussian
+    radius: { x: 16, y: 16 }
+    alpha: 1.0
 
 camera:
   type: pinhole
@@ -14,21 +18,79 @@ camera:
 lights:
   - type: diffuse-area
     shape:
-      type: sphere
-      center: { x: 50.0, y: 50.0, z: 50.0 }
-      radius: 10.0
+      type: rectangle
+      min: { x: 40.0, y: 100.0, z: 40.0 }
+      max: { x: 60.0, y: 100.0, z: 60.0 }
     radiance: { r: 100.0, g: 100.0, b: 100.0 }
 
 objects:
-  - id: 1
+  - id: left-wall
     shape:
-      type: sphere
-      center: { x: 50.0, y: 50.0, z: 50.0 }
-      radius: 10.0
+      type: rectangle
+      min: { x: 0.0, y: 0.0, z: 0.0 }
+      max: { x: 0.0, y: 100.0, z: 100.0 }
     material:
-      bsdf:
-        bxdfs:
-          - type: diffuse
+      type: matte
+      texture:
+        type: constant
+        spectrum: { r: 0.8, g: 0.0, b: 0.0 }
+  - id: rear-wall
+    shape:
+      type: rectangle
+      min: { x: 0.0, y: 0.0, z: 100.0 }
+      max: { x: 100.0, y: 100.0, z: 100.0 }
+    material:
+      type: matte
       texture:
         type: constant
         spectrum: { r: 0.8, g: 0.8, b: 0.8 }
+  - id: right-wall
+    shape:
+      type: rectangle
+      min: { x: 100.0, y: 0.0, z: 100.0 }
+      max: { x: 100.0, y: 100.0, z: 0.0 }
+    material:
+      type: matte
+      texture:
+        type: constant
+        spectrum: { r: 0.0, g: 0.8, b: 0.0 }
+  - id: front-wall
+    shape:
+      type: rectangle
+      min: { x: 0.0, y: 0.0, z: 0.0 }
+      max: { x: 100.0, y: 100.0, z: 0.0 }
+    material:
+      type: matte
+      texture:
+        type: constant
+        spectrum: { r: 0.8, g: 0.8, b: 0.8 }
+  - id: floor
+    shape:
+      type: rectangle
+      min: { x: 0.0, y: 0.0, z: 0.0 }
+      max: { x: 100.0, y: 0.0, z: 0.0 }
+    material:
+      type: matte
+      texture:
+        type: constant
+        spectrum: { r: 0.8, g: 0.8, b: 0.8 }
+  - id: ceiling
+    shape:
+      type: rectangle
+      min: { x: 0.0, y: 100.0, z: 0.0 }
+      max: { x: 100.0, y: 100.0, z: 100.0 }
+    material:
+      type: matte
+      texture:
+        type: constant
+        spectrum: { r: 0.8, g: 0.8, b: 0.8 }
+  - id: sphere-1
+    shape:
+      type: sphere
+      center: { x: 50.0, y: 50.0, z: 50.0 }
+      radius: 50.0
+    material:
+      type: matte
+      texture:
+        type: constant
+        spectrum: { r: 0.0, g: 0.8, b: 0.0 }
