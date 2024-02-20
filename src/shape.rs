@@ -1,5 +1,7 @@
+use std::f64::consts::PI;
+
 use crate::{
-    intersection::Intersection,
+    intersection::{Intersection, ObjectIntersection, Orientation},
     ray::Ray,
     sampler::Sampler,
     vector::{Point, Vector},
@@ -13,12 +15,12 @@ pub trait Shape {
 
 pub struct Sphere {
     center: Point,
-    radius: Vector,
+    radius: f64,
 }
 
 impl Shape for Sphere {
     fn probability(&self, direction: Vector) -> f64 {
-        todo!()
+        1.0 / (4.0 * PI * self.radius * self.radius)
     }
 
     fn sample_intersection(&self, sampler: &dyn Sampler) -> Intersection {
@@ -31,20 +33,44 @@ impl Shape for Sphere {
 }
 
 pub struct Rectangle {
-    min: Point,
-    max: Point,
+    origin: Point,
+    left: Point,
+    right: Point,
 }
 
 impl Shape for Rectangle {
-    fn probability(&self, direction: Vector) -> f64 {
-        todo!()
+    fn probability(&self, _direction: Vector) -> f64 {
+        let left_length = (self.left - self.origin).len();
+        let right_length = (self.right - self.origin).len();
+        let area = left_length * right_length;
+        1.0 / area
     }
 
     fn sample_intersection(&self, sampler: &dyn Sampler) -> Intersection {
         todo!()
     }
 
+    // TODO: this cannot compute an intersection; it can only compute the normal, point, direction (geometry)
     fn intersect(&self, ray: Ray) -> Option<Intersection> {
+        let l = self.left - self.origin;
+        let r = self.right - self.origin;
+        let normal = r.cross(l);
+
+        if normal.dot(ray.direction) == 0.0 {
+            return None;
+        }
+
+        let t = normal.dot(self.origin - ray.origin) / normal.dot(ray.direction);
+        let point = ray.origin + ray.direction * t;
+
+        // Test inside (dot both sides of linear equation al + br = p with l and r to obtain 2 scalar equations with 2 unknowns; compute determinant; non-zero (within threshold) means inside bounds)
+
+        // Geometry {
+        //    point,
+        //    direction: ray.direction * t,
+        //    normal,
+        // }
+
         todo!()
     }
 }

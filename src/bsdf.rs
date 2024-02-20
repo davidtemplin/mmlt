@@ -35,7 +35,7 @@ impl Bxdf for DiffuseBrdf {
         self.scale * (1.0 / PI)
     }
 
-    fn probability(&self, wo: Vector, wi: Vector) -> f64 {
-        todo!()
+    fn probability(&self, _wo: Vector, _wi: Vector) -> f64 {
+        1.0 / (2.0 * PI)
     }
 }
