@@ -1,10 +1,12 @@
 use std::f64::consts::PI;
 
+use serde::{Deserialize, Serialize};
+
 use crate::{
     intersection::{Intersection, ObjectIntersection, Orientation},
     ray::Ray,
     sampler::Sampler,
-    vector::{Point, Vector},
+    vector::{Point, PointConfig, Vector},
 };
 
 pub trait Shape {
@@ -73,4 +75,25 @@ impl Shape for Rectangle {
 
         todo!()
     }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
+pub enum ShapeConfig {
+    Sphere(SphereConfig),
+    Parallelogram(ParallelogramConfig),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SphereConfig {
+    id: String,
+    center: PointConfig,
+    radius: f64,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ParallelogramConfig {
+    id: String,
+    points: Vec<PointConfig>,
 }

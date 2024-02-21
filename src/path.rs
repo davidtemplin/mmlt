@@ -66,8 +66,8 @@ impl<'a> Vertex<'a> {
 
     fn probability(&self, path_type: PathType) -> f64 {
         match self {
-            Vertex::Camera(v) => v.camera.probability(v.point, v.wi) * v.direction_to_area,
-            Vertex::Light(v) => v.light.probability(v.wo) * v.direction_to_area,
+            Vertex::Camera(v) => v.camera.probability(v.point, v.wi) * v.direction_to_area, // TODO: need to let camera determine PDF, store it; could take more than 1 sample
+            Vertex::Light(v) => v.light.probability(v.wo) * v.direction_to_area, // TODO: need to include PDF of sampling light from scene
             Vertex::Object(v) => match path_type {
                 PathType::Camera => {
                     v.object.probability(v.wo, v.normal, v.wi) * v.direction_to_area

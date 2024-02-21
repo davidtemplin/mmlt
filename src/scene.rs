@@ -1,5 +1,17 @@
+use std::fs::File;
+use std::io;
+
+use serde::{Deserialize, Serialize};
+
+use crate::image::ImageConfig;
+use crate::light::LightConfig;
+use crate::object::ObjectConfig;
 use crate::{
-    camera::Camera, intersection::Intersection, light::Light, object::Object, ray::Ray,
+    camera::{Camera, CameraConfig},
+    intersection::Intersection,
+    light::Light,
+    object::Object,
+    ray::Ray,
     sampler::Sampler,
 };
 
@@ -11,9 +23,37 @@ pub struct Scene {
     pub y_resolution: usize,
 }
 
+impl SceneConfig {
+    pub fn configure(self: SceneConfig) -> Scene {
+        let camera = Box::new(self.camera.configure());
+        let lights = self.lights.iter().map(|c| c.configure()).collect();
+        let objects = self.objects.iter().map(|c| c.configure()).collect();
+        Scene {
+            camera,
+            lights,
+            objects,
+            x_resolution: self.image.width,
+            y_resolution: self.image.height,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct SceneConfig {
+    image: ImageConfig,
+    camera: CameraConfig,
+    lights: Vec<LightConfig>,
+    objects: Vec<ObjectConfig>,
+}
+
 impl Scene {
     pub fn load(path: String) -> Result<Scene, String> {
-        todo!()
+        let file = File::open(path).map_err(|e: io::Error| e.to_string())?;
+        let config: SceneConfig =
+            serde_yaml::from_reader(file).map_err(|e: serde_yaml::Error| e.to_string())?;
+        println!("{}", format!("{config:#?}"));
+        let scene = config.configure();
+        Ok(scene)
     }
 
     pub fn intersect(&self, ray: Ray) -> Option<Intersection> {

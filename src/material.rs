@@ -1,6 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use crate::{
     bsdf::{Bsdf, DiffuseBrdf},
-    texture::Texture,
+    texture::{Texture, TextureConfig},
 };
 
 pub trait Material {
@@ -17,4 +19,11 @@ impl MatteMaterial {
             bxdfs: vec![Box::new(DiffuseBrdf::new(self.texture.evaluate()))],
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
+pub enum MaterialConfig {
+    Matte { texture: TextureConfig },
 }

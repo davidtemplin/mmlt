@@ -1,9 +1,11 @@
+use serde::{Deserialize, Serialize};
+
 use crate::{
     intersection::{CameraIntersection, Intersection, Orientation},
     ray::Ray,
     sampler::Sampler,
     spectrum::Spectrum,
-    vector::{Point, Vector},
+    vector::{Point, PointConfig, Vector, VectorConfig},
 };
 
 pub trait Camera {
@@ -66,4 +68,45 @@ impl Camera for PinholeCamera {
     fn id(&self) -> u64 {
         self.id
     }
+}
+
+impl PinholeCamera {
+    pub fn configure(config: PinholeCameraConfig) -> PinholeCamera {
+        todo!()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
+pub enum CameraConfig {
+    Pinhole(PinholeCameraConfig),
+}
+
+impl CameraConfig {
+    pub fn configure(self) -> impl Camera {
+        match self {
+            CameraConfig::Pinhole(config) => PinholeCamera::configure(config),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PinholeCameraConfig {
+    origin: PointConfig,
+    direction: VectorConfig,
+    field_of_view: FieldOfViewConfig,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum AngleUnitConfig {
+    Degrees,
+    Radians,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct FieldOfViewConfig {
+    value: f64,
+    unit: AngleUnitConfig,
 }

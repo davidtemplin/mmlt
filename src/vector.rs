@@ -3,6 +3,9 @@ use std::ops::Div;
 use std::ops::Mul;
 use std::ops::Sub;
 
+use serde::Deserialize;
+use serde::Serialize;
+
 pub type Point = Vector;
 
 #[derive(Copy, Clone)]
@@ -96,6 +99,20 @@ impl Div<f64> for Vector {
             z: self.z / rhs,
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PointConfig {
+    x: f64,
+    y: f64,
+    z: f64,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct VectorConfig {
+    x: f64,
+    y: f64,
+    z: f64,
 }
 
 #[cfg(test)]

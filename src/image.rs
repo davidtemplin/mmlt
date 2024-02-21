@@ -3,6 +3,8 @@ use std::{
     io::{self, LineWriter, Write},
 };
 
+use serde::{Deserialize, Serialize};
+
 use crate::spectrum::Spectrum;
 
 pub struct Image {
@@ -43,4 +45,25 @@ impl Image {
         let result = w();
         result.map_err(|e: io::Error| e.to_string())
     }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ImageConfig {
+    pub width: usize,
+    pub height: usize,
+    pub filter: FilterConfig,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
+pub enum FilterConfig {
+    Gaussian(GaussianFilterConfig),
+    Box,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GaussianFilterConfig {
+    radius: f64,
+    alpha: f64,
 }

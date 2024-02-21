@@ -1,5 +1,7 @@
 use std::ops::{Add, Div, Mul};
 
+use serde::{Deserialize, Serialize};
+
 pub type Spectrum = RgbSpectrum;
 
 const LUMINANCE_WEIGHT: [f64; 3] = [0.212671, 0.715160, 0.072169];
@@ -70,4 +72,11 @@ impl Div<f64> for RgbSpectrum {
             b: self.b / rhs,
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SpectrumConfig {
+    r: f64,
+    g: f64,
+    b: f64,
 }

@@ -1,5 +1,11 @@
+use serde::{Deserialize, Serialize};
+
 use crate::{
-    intersection::Intersection, ray::Ray, sampler::Sampler, shape::Shape, spectrum::Spectrum,
+    intersection::Intersection,
+    ray::Ray,
+    sampler::Sampler,
+    shape::{Shape, ShapeConfig},
+    spectrum::{Spectrum, SpectrumConfig},
     vector::Vector,
 };
 
@@ -41,4 +47,32 @@ impl Light for DiffuseAreaLight {
     fn id(&self) -> u64 {
         self.id
     }
+}
+
+impl DiffuseAreaLight {
+    pub fn configure(config: &DiffuseAreaLightConfig) -> DiffuseAreaLight {
+        todo!()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
+pub enum LightConfig {
+    DiffuseArea(DiffuseAreaLightConfig),
+}
+
+impl LightConfig {
+    pub fn configure(&self) -> Box<dyn Light> {
+        match self {
+            LightConfig::DiffuseArea(config) => Box::new(DiffuseAreaLight::configure(config)),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DiffuseAreaLightConfig {
+    id: String,
+    shape: ShapeConfig,
+    spectrum: SpectrumConfig,
 }
