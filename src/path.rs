@@ -100,41 +100,12 @@ pub struct Technique {
     light: usize,
 }
 
-pub enum ConnectionType {
-    Trivial,
-    DirectLight,
-    DirectCamera,
-    LightTrace,
-    CameraTrace,
-    Interior,
-}
-
 impl Technique {
     pub fn sample(path_length: usize, sampler: &mut impl Sampler) -> Technique {
         let r = sampler.sample(0.0..path_length as f64);
         let camera = (r * path_length as f64) as usize;
         let light = path_length - camera;
         Technique { camera, light }
-    }
-
-    pub fn connection_type(&self) -> ConnectionType {
-        if self.camera == 0 {
-            ConnectionType::DirectCamera
-        } else if self.camera == 1 {
-            if self.light == 1 {
-                ConnectionType::Trivial
-            } else {
-                ConnectionType::CameraTrace
-            }
-        } else {
-            if self.light == 0 {
-                ConnectionType::DirectLight
-            } else if self.light == 1 {
-                ConnectionType::LightTrace
-            } else {
-                ConnectionType::Interior
-            }
-        }
     }
 }
 
@@ -179,17 +150,29 @@ impl<'a> Path<'a> {
 
         let technique = Technique::sample(path_length, sampler);
 
-        match technique.connection_type() {
-            ConnectionType::Trivial => Path::trivial(scene, sampler),
-            ConnectionType::DirectCamera => Path::direct_camera(scene, sampler, technique),
-            ConnectionType::DirectLight => Path::direct_light(scene, sampler, technique),
-            ConnectionType::CameraTrace => Path::camera_trace(scene, sampler, technique),
-            ConnectionType::LightTrace => Path::light_trace(scene, sampler, technique),
-            ConnectionType::Interior => Path::interior(scene, sampler, technique),
+        if technique.camera == 0 {
+            Path::connect_full_light_path(scene, sampler, technique)
+        } else if technique.camera == 1 {
+            if technique.light == 1 {
+                Path::connect_camera_to_light(scene, sampler)
+            } else {
+                Path::connect_camera_to_light_subpath(scene, sampler, technique)
+            }
+        } else {
+            if technique.light == 0 {
+                Path::connect_full_camera_path(scene, sampler, technique)
+            } else if technique.light == 1 {
+                Path::connect_camera_subpath_to_light(scene, sampler, technique)
+            } else {
+                Path::connect_camera_subpath_to_light_subpath(scene, sampler, technique)
+            }
         }
     }
 
-    pub fn trivial(scene: &'a Scene, sampler: &mut impl Sampler) -> Option<Path<'a>> {
+    pub fn connect_camera_to_light(
+        scene: &'a Scene,
+        sampler: &mut impl Sampler,
+    ) -> Option<Path<'a>> {
         sampler.start_stream(CAMERA_STREAM);
         let camera_intersection = scene.camera.sample_intersection(sampler);
         sampler.start_stream(LIGHT_STREAM);
@@ -200,7 +183,7 @@ impl<'a> Path<'a> {
     }
 
     // TODO: sometimes we sample a point, sometimes a ray; this might require 1 or 2 random numbers; ensure consistency somehow
-    pub fn direct_camera(
+    pub fn connect_full_light_path(
         scene: &'a Scene,
         sampler: &mut impl Sampler,
         technique: Technique,
@@ -213,7 +196,7 @@ impl<'a> Path<'a> {
         Path::compute(&intersections)
     }
 
-    pub fn direct_light(
+    pub fn connect_full_camera_path(
         scene: &'a Scene,
         sampler: &mut impl Sampler,
         technique: Technique,
@@ -225,7 +208,7 @@ impl<'a> Path<'a> {
         Path::compute(&intersections)
     }
 
-    pub fn camera_trace(
+    pub fn connect_camera_to_light_subpath(
         scene: &'a Scene,
         sampler: &mut impl Sampler,
         technique: Technique,
@@ -243,7 +226,7 @@ impl<'a> Path<'a> {
         Path::compute(&intersections)
     }
 
-    pub fn light_trace(
+    pub fn connect_camera_subpath_to_light(
         scene: &'a Scene,
         sampler: &mut impl Sampler,
         technique: Technique,
@@ -261,7 +244,7 @@ impl<'a> Path<'a> {
         Path::compute(&intersections)
     }
 
-    pub fn interior(
+    pub fn connect_camera_subpath_to_light_subpath(
         scene: &'a Scene,
         sampler: &mut impl Sampler,
         technique: Technique,
