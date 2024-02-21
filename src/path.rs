@@ -1,6 +1,6 @@
 use crate::{
     camera::Camera,
-    intersection::{Intersection, Orientation},
+    interaction::{Interaction, Orientation},
     light::Light,
     object::Object,
     ray::Ray,
@@ -174,12 +174,12 @@ impl<'a> Path<'a> {
         sampler: &mut impl Sampler,
     ) -> Option<Path<'a>> {
         sampler.start_stream(CAMERA_STREAM);
-        let camera_intersection = scene.camera.sample_intersection(sampler);
+        let camera_interaction = scene.camera.sample_interaction(sampler);
         sampler.start_stream(LIGHT_STREAM);
         let light = scene.sample_light(sampler);
-        let light_intersection = light.sample_intersection(sampler);
-        let intersections = vec![camera_intersection, light_intersection];
-        Path::compute(&intersections)
+        let light_interaction = light.sample_interaction(sampler);
+        let interactions = vec![camera_interaction, light_interaction];
+        Path::compute(&interactions)
     }
 
     // TODO: sometimes we sample a point, sometimes a ray; this might require 1 or 2 random numbers; ensure consistency somehow
@@ -190,10 +190,10 @@ impl<'a> Path<'a> {
     ) -> Option<Path<'a>> {
         sampler.start_stream(LIGHT_STREAM);
         let light = scene.sample_light(sampler);
-        let light_intersection = light.sample_intersection(sampler);
-        let intersections = Path::trace(scene, sampler, light_intersection, technique.light)?;
-        intersections.last().filter(|i| i.is_camera())?;
-        Path::compute(&intersections)
+        let light_interaction = light.sample_interaction(sampler);
+        let interactions = Path::trace(scene, sampler, light_interaction, technique.light)?;
+        interactions.last().filter(|i| i.is_camera())?;
+        Path::compute(&interactions)
     }
 
     pub fn connect_full_camera_path(
@@ -202,10 +202,10 @@ impl<'a> Path<'a> {
         technique: Technique,
     ) -> Option<Path<'a>> {
         sampler.start_stream(CAMERA_STREAM);
-        let camera_intersection = scene.camera.sample_intersection(sampler);
-        let intersections = Path::trace(scene, sampler, camera_intersection, technique.camera)?;
-        intersections.last().filter(|i| i.is_light())?;
-        Path::compute(&intersections)
+        let camera_interaction = scene.camera.sample_interaction(sampler);
+        let interactions = Path::trace(scene, sampler, camera_interaction, technique.camera)?;
+        interactions.last().filter(|i| i.is_light())?;
+        Path::compute(&interactions)
     }
 
     pub fn connect_camera_to_light_subpath(
@@ -215,15 +215,15 @@ impl<'a> Path<'a> {
     ) -> Option<Path<'a>> {
         sampler.start_stream(LIGHT_STREAM);
         let light = scene.sample_light(sampler);
-        let light_intersection = light.sample_intersection(sampler);
-        let mut intersections = Path::trace(scene, sampler, light_intersection, technique.light)?;
-        let last = intersections.last().filter(|i| i.is_object())?;
+        let light_interaction = light.sample_interaction(sampler);
+        let mut interactions = Path::trace(scene, sampler, light_interaction, technique.light)?;
+        let last = interactions.last().filter(|i| i.is_object())?;
         sampler.start_stream(CAMERA_STREAM);
-        let camera_intersection = scene.camera.sample_intersection(sampler);
-        let ray = Ray::new(last.point(), camera_intersection.point() - last.point());
-        let intersection = scene.intersect(ray).filter(|i| i.is_camera())?;
-        intersections.push(intersection);
-        Path::compute(&intersections)
+        let camera_interaction = scene.camera.sample_interaction(sampler);
+        let ray = Ray::new(last.point(), camera_interaction.point() - last.point());
+        let interaction = scene.intersect(ray).filter(|i| i.is_camera())?;
+        interactions.push(interaction);
+        Path::compute(&interactions)
     }
 
     pub fn connect_camera_subpath_to_light(
@@ -232,16 +232,16 @@ impl<'a> Path<'a> {
         technique: Technique,
     ) -> Option<Path<'a>> {
         sampler.start_stream(CAMERA_STREAM);
-        let camera_intersection = scene.camera.sample_intersection(sampler);
-        let mut intersections = Path::trace(scene, sampler, camera_intersection, technique.camera)?;
-        let last = intersections.last().filter(|i| i.is_object())?;
+        let camera_interaction = scene.camera.sample_interaction(sampler);
+        let mut interactions = Path::trace(scene, sampler, camera_interaction, technique.camera)?;
+        let last = interactions.last().filter(|i| i.is_object())?;
         sampler.start_stream(LIGHT_STREAM);
         let light = scene.sample_light(sampler);
-        let light_intersection = light.sample_intersection(sampler);
-        let ray = Ray::new(last.point(), light_intersection.point() - last.point());
-        let intersection = scene.intersect(ray).filter(|i| i.is_light())?;
-        intersections.push(intersection);
-        Path::compute(&intersections)
+        let light_interaction = light.sample_interaction(sampler);
+        let ray = Ray::new(last.point(), light_interaction.point() - last.point());
+        let interaction = scene.intersect(ray).filter(|i| i.is_light())?;
+        interactions.push(interaction);
+        Path::compute(&interactions)
     }
 
     pub fn connect_camera_subpath_to_light_subpath(
@@ -250,44 +250,44 @@ impl<'a> Path<'a> {
         technique: Technique,
     ) -> Option<Path<'a>> {
         sampler.start_stream(CAMERA_STREAM);
-        let camera_intersection = scene.camera.sample_intersection(sampler);
-        let camera_intersections =
-            Path::trace(scene, sampler, camera_intersection, technique.camera)?;
+        let camera_interaction = scene.camera.sample_interaction(sampler);
+        let camera_interactions =
+            Path::trace(scene, sampler, camera_interaction, technique.camera)?;
         sampler.start_stream(LIGHT_STREAM);
         let light = scene.sample_light(sampler);
-        let light_intersection = light.sample_intersection(sampler);
-        let mut light_intersections =
-            Path::trace(scene, sampler, light_intersection, technique.light)?;
-        let camera_last = camera_intersections.last().filter(|i| i.is_object())?;
-        let light_last = light_intersections.last().filter(|i| i.is_object())?;
+        let light_interaction = light.sample_interaction(sampler);
+        let mut light_interactions =
+            Path::trace(scene, sampler, light_interaction, technique.light)?;
+        let camera_last = camera_interactions.last().filter(|i| i.is_object())?;
+        let light_last = light_interactions.last().filter(|i| i.is_object())?;
         let ray = Ray::new(camera_last.point(), light_last.point() - light_last.point());
         let id = light_last.id();
-        let intersection = scene.intersect(ray).filter(|i| i.id() == id)?;
-        light_intersections.reverse();
-        let mut intersections = camera_intersections;
-        intersections.push(intersection);
-        intersections.extend(light_intersections);
-        Path::compute(&intersections)
+        let interaction = scene.intersect(ray).filter(|i| i.id() == id)?;
+        light_interactions.reverse();
+        let mut interactions = camera_interactions;
+        interactions.push(interaction);
+        interactions.extend(light_interactions);
+        Path::compute(&interactions)
     }
 
     fn trace(
         scene: &'a Scene,
         sampler: &mut impl Sampler,
-        intersection: Intersection<'a>,
+        interaction: Interaction<'a>,
         length: usize,
-    ) -> Option<Vec<Intersection<'a>>> {
-        let mut stack: Vec<Intersection<'a>> = Vec::new();
-        let mut ray = intersection.generate_ray(sampler)?;
-        stack.push(intersection);
+    ) -> Option<Vec<Interaction<'a>>> {
+        let mut stack: Vec<Interaction<'a>> = Vec::new();
+        let mut ray = interaction.generate_ray(sampler)?;
+        stack.push(interaction);
         for _ in 0..length {
-            let intersection = scene.intersect(ray)?;
-            ray = intersection.generate_ray(sampler)?;
-            stack.push(intersection);
+            let interaction = scene.intersect(ray)?;
+            ray = interaction.generate_ray(sampler)?;
+            stack.push(interaction);
         }
         Some(stack)
     }
 
-    fn compute(intersections: &Vec<Intersection<'a>>) -> Option<Path<'a>> {
+    fn compute(interactions: &Vec<Interaction<'a>>) -> Option<Path<'a>> {
         let mut vertices: Vec<Vertex<'a>> = Vec::new();
 
         let technique = Technique {
@@ -295,121 +295,117 @@ impl<'a> Path<'a> {
             light: 0,
         };
 
-        for i in 0..intersections.len() {
-            match &intersections[i] {
-                Intersection::Camera(camera_intersection) => {
-                    match camera_intersection.orientation {
-                        Orientation::Camera => {
-                            let next_intersection = &intersections[i + 1];
+        for i in 0..interactions.len() {
+            match &interactions[i] {
+                Interaction::Camera(camera_interaction) => match camera_interaction.orientation {
+                    Orientation::Camera => {
+                        let next_interaction = &interactions[i + 1];
 
-                            let camera_vertex = CameraVertex {
-                                camera: camera_intersection.camera,
-                                point: camera_intersection.point,
-                                wi: camera_intersection.direction,
-                                direction_to_area: util::direction_to_area(
-                                    camera_intersection.direction,
-                                    next_intersection.normal(),
-                                ),
-                                geometry_term: util::geometry_term(
-                                    camera_intersection.direction,
-                                    camera_intersection.normal,
-                                    next_intersection.normal(),
-                                ),
-                            };
+                        let camera_vertex = CameraVertex {
+                            camera: camera_interaction.camera,
+                            point: camera_interaction.point,
+                            wi: camera_interaction.direction,
+                            direction_to_area: util::direction_to_area(
+                                camera_interaction.direction,
+                                next_interaction.normal(),
+                            ),
+                            geometry_term: util::geometry_term(
+                                camera_interaction.direction,
+                                camera_interaction.normal,
+                                next_interaction.normal(),
+                            ),
+                        };
 
-                            vertices.push(Vertex::Camera(camera_vertex));
-                        }
-                        Orientation::Light => {
-                            let camera_vertex = CameraVertex {
-                                camera: camera_intersection.camera,
-                                point: camera_intersection.point,
-                                wi: camera_intersection.direction,
-                                direction_to_area: 1.0,
-                                geometry_term: 1.0,
-                            };
-
-                            vertices.push(Vertex::Camera(camera_vertex));
-                        }
+                        vertices.push(Vertex::Camera(camera_vertex));
                     }
-                }
-                Intersection::Light(light_intersection) => match light_intersection.orientation {
+                    Orientation::Light => {
+                        let camera_vertex = CameraVertex {
+                            camera: camera_interaction.camera,
+                            point: camera_interaction.point,
+                            wi: camera_interaction.direction,
+                            direction_to_area: 1.0,
+                            geometry_term: 1.0,
+                        };
+
+                        vertices.push(Vertex::Camera(camera_vertex));
+                    }
+                },
+                Interaction::Light(light_interaction) => match light_interaction.orientation {
                     Orientation::Camera => {
                         let light_vertex = LightVertex {
-                            light: light_intersection.light,
-                            point: light_intersection.point,
-                            wo: light_intersection.direction * -1.0,
-                            normal: light_intersection.normal,
+                            light: light_interaction.light,
+                            point: light_interaction.point,
+                            wo: light_interaction.direction * -1.0,
+                            normal: light_interaction.normal,
                             direction_to_area: 1.0,
                         };
 
                         vertices.push(Vertex::Light(light_vertex));
                     }
                     Orientation::Light => {
-                        let previous_intersection = &intersections[i - 1];
+                        let previous_interaction = &interactions[i - 1];
 
                         let light_vertex = LightVertex {
-                            light: light_intersection.light,
-                            point: light_intersection.point,
-                            wo: light_intersection.direction,
-                            normal: light_intersection.normal,
+                            light: light_interaction.light,
+                            point: light_interaction.point,
+                            wo: light_interaction.direction,
+                            normal: light_interaction.normal,
                             direction_to_area: util::direction_to_area(
-                                light_intersection.direction,
-                                previous_intersection.normal(),
+                                light_interaction.direction,
+                                previous_interaction.normal(),
                             ),
                         };
 
                         vertices.push(Vertex::Light(light_vertex));
                     }
                 },
-                Intersection::Object(object_intersection) => {
-                    match object_intersection.orientation {
-                        Orientation::Camera => {
-                            let next_intersection = &intersections[i + 1];
+                Interaction::Object(object_interaction) => match object_interaction.orientation {
+                    Orientation::Camera => {
+                        let next_interaction = &interactions[i + 1];
 
-                            let wi = next_intersection.point() - object_intersection.point;
+                        let wi = next_interaction.point() - object_interaction.point;
 
-                            let object_vertex = ObjectVertex {
-                                object: object_intersection.object,
-                                normal: object_intersection.normal,
-                                point: object_intersection.point,
-                                wo: object_intersection.direction * -1.0,
+                        let object_vertex = ObjectVertex {
+                            object: object_interaction.object,
+                            normal: object_interaction.normal,
+                            point: object_interaction.point,
+                            wo: object_interaction.direction * -1.0,
+                            wi,
+                            direction_to_area: util::direction_to_area(
                                 wi,
-                                direction_to_area: util::direction_to_area(
-                                    wi,
-                                    next_intersection.normal(),
-                                ),
-                                geometry_term: util::geometry_term(
-                                    wi,
-                                    object_intersection.normal,
-                                    next_intersection.normal(),
-                                ),
-                            };
+                                next_interaction.normal(),
+                            ),
+                            geometry_term: util::geometry_term(
+                                wi,
+                                object_interaction.normal,
+                                next_interaction.normal(),
+                            ),
+                        };
 
-                            vertices.push(Vertex::Object(object_vertex));
-                        }
-                        Orientation::Light => {
-                            let previous_intersection = &intersections[i - 1];
-                            let wo = previous_intersection.point() - object_intersection.point;
-                            let object_vertex = ObjectVertex {
-                                object: object_intersection.object,
-                                normal: object_intersection.normal,
-                                point: object_intersection.point,
-                                wo,
-                                wi: object_intersection.direction * -1.0,
-                                direction_to_area: util::direction_to_area(
-                                    wo,
-                                    previous_intersection.normal(),
-                                ),
-                                geometry_term: util::geometry_term(
-                                    wo,
-                                    object_intersection.normal,
-                                    previous_intersection.normal(),
-                                ),
-                            };
-                            vertices.push(Vertex::Object(object_vertex));
-                        }
+                        vertices.push(Vertex::Object(object_vertex));
                     }
-                }
+                    Orientation::Light => {
+                        let previous_interaction = &interactions[i - 1];
+                        let wo = previous_interaction.point() - object_interaction.point;
+                        let object_vertex = ObjectVertex {
+                            object: object_interaction.object,
+                            normal: object_interaction.normal,
+                            point: object_interaction.point,
+                            wo,
+                            wi: object_interaction.direction * -1.0,
+                            direction_to_area: util::direction_to_area(
+                                wo,
+                                previous_interaction.normal(),
+                            ),
+                            geometry_term: util::geometry_term(
+                                wo,
+                                object_interaction.normal,
+                                previous_interaction.normal(),
+                            ),
+                        };
+                        vertices.push(Vertex::Object(object_vertex));
+                    }
+                },
             }
         }
 

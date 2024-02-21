@@ -3,7 +3,7 @@ use std::f64::consts::PI;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    intersection::{Intersection, ObjectIntersection, Orientation},
+    interaction::{Interaction, ObjectInteraction, Orientation},
     ray::Ray,
     sampler::Sampler,
     vector::{Point, PointConfig, Vector},
@@ -11,8 +11,8 @@ use crate::{
 
 pub trait Shape {
     fn probability(&self, direction: Vector) -> f64;
-    fn sample_intersection(&self, sampler: &dyn Sampler) -> Intersection;
-    fn intersect(&self, ray: Ray) -> Option<Intersection>;
+    fn sample_interaction(&self, sampler: &dyn Sampler) -> Interaction;
+    fn intersect(&self, ray: Ray) -> Option<Interaction>;
 }
 
 pub struct Sphere {
@@ -21,15 +21,16 @@ pub struct Sphere {
 }
 
 impl Shape for Sphere {
+    // TODO: remove probability, sample_interaction; instead, use area() and intersect() -> Geometry
     fn probability(&self, direction: Vector) -> f64 {
         1.0 / (4.0 * PI * self.radius * self.radius)
     }
 
-    fn sample_intersection(&self, sampler: &dyn Sampler) -> Intersection {
+    fn sample_interaction(&self, sampler: &dyn Sampler) -> Interaction {
         todo!()
     }
 
-    fn intersect(&self, ray: Ray) -> Option<Intersection> {
+    fn intersect(&self, ray: Ray) -> Option<Interaction> {
         todo!()
     }
 }
@@ -48,12 +49,12 @@ impl Shape for Rectangle {
         1.0 / area
     }
 
-    fn sample_intersection(&self, sampler: &dyn Sampler) -> Intersection {
+    fn sample_interaction(&self, sampler: &dyn Sampler) -> Interaction {
         todo!()
     }
 
-    // TODO: this cannot compute an intersection; it can only compute the normal, point, direction (geometry)
-    fn intersect(&self, ray: Ray) -> Option<Intersection> {
+    // TODO: this cannot compute an interaction; it can only compute the normal, point, direction (geometry)
+    fn intersect(&self, ray: Ray) -> Option<Interaction> {
         let l = self.left - self.origin;
         let r = self.right - self.origin;
         let normal = r.cross(l);

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    intersection::Intersection,
+    interaction::Interaction,
     ray::Ray,
     sampler::Sampler,
     shape::{Shape, ShapeConfig},
@@ -12,8 +12,8 @@ use crate::{
 pub trait Light {
     fn radiance(&self, direction: Vector, normal: Vector) -> Spectrum;
     fn probability(&self, direction: Vector) -> f64;
-    fn sample_intersection(&self, sampler: &dyn Sampler) -> Intersection;
-    fn intersect(&self, ray: Ray) -> Option<Intersection<'_>>;
+    fn sample_interaction(&self, sampler: &dyn Sampler) -> Interaction;
+    fn intersect(&self, ray: Ray) -> Option<Interaction<'_>>;
     fn id(&self) -> u64;
 }
 
@@ -36,11 +36,11 @@ impl Light for DiffuseAreaLight {
         self.shape.probability(direction)
     }
 
-    fn sample_intersection(&self, sampler: &dyn Sampler) -> Intersection {
-        self.shape.sample_intersection(sampler)
+    fn sample_interaction(&self, sampler: &dyn Sampler) -> Interaction {
+        self.shape.sample_interaction(sampler)
     }
 
-    fn intersect(&self, ray: Ray) -> Option<Intersection> {
+    fn intersect(&self, ray: Ray) -> Option<Interaction> {
         self.shape.intersect(ray)
     }
 

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    intersection::{CameraIntersection, Intersection, Orientation},
+    interaction::{CameraInteraction, Interaction, Orientation},
     ray::Ray,
     sampler::Sampler,
     spectrum::Spectrum,
@@ -11,8 +11,8 @@ use crate::{
 pub trait Camera {
     fn importance(&self, point: Point, direction: Vector) -> Spectrum;
     fn probability(&self, point: Point, direction: Vector) -> f64;
-    fn sample_intersection(&self, sampler: &mut dyn Sampler) -> Intersection;
-    fn intersect(&self, ray: Ray) -> Option<Intersection>;
+    fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction;
+    fn intersect(&self, ray: Ray) -> Option<Interaction>;
     fn id(&self) -> u64;
 }
 
@@ -44,24 +44,24 @@ impl Camera for PinholeCamera {
         d2 / (a * c)
     }
 
-    fn sample_intersection(&self, sampler: &mut dyn Sampler) -> Intersection {
+    fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction {
         let width = self.pixel_width / 2.0;
         let height = self.pixel_height / 2.0;
         let u = self.u * sampler.sample(-width..width);
         let v = self.v * sampler.sample(-height..height);
         let w = self.w * self.distance;
         let direction = (u + v + w).norm();
-        let camera_intersection = CameraIntersection {
+        let camera_interaction = CameraInteraction {
             camera: self,
             point: self.origin,
             direction,
             normal: self.w,
             orientation: Orientation::Camera,
         };
-        Intersection::Camera(camera_intersection)
+        Interaction::Camera(camera_interaction)
     }
 
-    fn intersect(&self, _ray: Ray) -> Option<Intersection> {
+    fn intersect(&self, _ray: Ray) -> Option<Interaction> {
         None
     }
 

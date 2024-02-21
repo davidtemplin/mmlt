@@ -8,7 +8,7 @@ use crate::light::LightConfig;
 use crate::object::ObjectConfig;
 use crate::{
     camera::{Camera, CameraConfig},
-    intersection::Intersection,
+    interaction::Interaction,
     light::Light,
     object::Object,
     ray::Ray,
@@ -56,8 +56,8 @@ impl Scene {
         Ok(scene)
     }
 
-    pub fn intersect(&self, ray: Ray) -> Option<Intersection> {
-        let mut result: Option<Intersection> = None;
+    pub fn intersect(&self, ray: Ray) -> Option<Interaction> {
+        let mut result: Option<Interaction> = None;
 
         if let Some(candidate) = self.camera.intersect(ray) {
             if let Some(ref best) = result {

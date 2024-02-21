@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    intersection::Intersection, material::MaterialConfig, ray::Ray, sampler::Sampler,
+    interaction::Interaction, material::MaterialConfig, ray::Ray, sampler::Sampler,
     shape::ShapeConfig, spectrum::Spectrum, vector::Vector,
 };
 
@@ -9,13 +9,14 @@ pub trait Object {
     fn reflectance(&self, wo: Vector, n: Vector, wi: Vector) -> Spectrum;
     fn probability(&self, wo: Vector, n: Vector, wi: Vector) -> f64;
     fn generate_ray(&self, n: Vector, wi: Vector, sampler: &dyn Sampler) -> Ray;
-    fn intersect(&self, ray: Ray) -> Option<Intersection<'_>>;
+    fn intersect(&self, ray: Ray) -> Option<Interaction<'_>>;
     fn id(&self) -> u64;
 }
 
 pub struct GeometricObject {}
 
 impl Object for GeometricObject {
+    // TODO: remove reflectance, probability, generate_ray; these are methods of BSDF
     fn reflectance(&self, wo: Vector, n: Vector, wi: Vector) -> Spectrum {
         todo!()
     }
@@ -28,7 +29,7 @@ impl Object for GeometricObject {
         todo!()
     }
 
-    fn intersect(&self, ray: Ray) -> Option<Intersection<'_>> {
+    fn intersect(&self, ray: Ray) -> Option<Interaction<'_>> {
         todo!()
     }
 

@@ -11,7 +11,7 @@ mod camera;
 mod config;
 mod image;
 mod integrator;
-mod intersection;
+mod interaction;
 mod light;
 mod markov_chain;
 mod material;
