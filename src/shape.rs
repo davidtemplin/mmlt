@@ -31,20 +31,35 @@ impl Shape for Sphere {
     }
 
     fn intersect(&self, ray: Ray) -> Option<Interaction> {
+        let c = self.center - ray.origin;
+        let b = c.dot(ray.direction);
+        let mut det = b * b - c.dot(c) + self.radius * self.radius;
+        if det < 0.0 {
+            return None;
+        }
+        det = det.sqrt();
+        let threshold = 1e-4;
+        let mut t = b - det;
+        if t <= threshold {
+            t = b + det;
+            if t <= threshold {
+                return None;
+            }
+        }
         todo!()
     }
 }
 
-pub struct Rectangle {
+pub struct Parallelogram {
     origin: Point,
-    left: Point,
-    right: Point,
+    a: Vector,
+    b: Vector,
 }
 
-impl Shape for Rectangle {
+impl Shape for Parallelogram {
     fn probability(&self, _direction: Vector) -> f64 {
-        let left_length = (self.left - self.origin).len();
-        let right_length = (self.right - self.origin).len();
+        let left_length = self.a.len();
+        let right_length = self.b.len();
         let area = left_length * right_length;
         1.0 / area
     }
@@ -55,18 +70,42 @@ impl Shape for Rectangle {
 
     // TODO: this cannot compute an interaction; it can only compute the normal, point, direction (geometry)
     fn intersect(&self, ray: Ray) -> Option<Interaction> {
-        let l = self.left - self.origin;
-        let r = self.right - self.origin;
-        let normal = r.cross(l);
+        let normal = self.a.cross(self.b);
 
-        if normal.dot(ray.direction) == 0.0 {
+        let nd = normal.dot(ray.direction);
+
+        if nd == 0.0 {
             return None;
         }
 
-        let t = normal.dot(self.origin - ray.origin) / normal.dot(ray.direction);
+        let t = normal.dot(self.origin - ray.origin) / nd;
+
         let point = ray.origin + ray.direction * t;
 
-        // Test inside (dot both sides of linear equation al + br = p with l and r to obtain 2 scalar equations with 2 unknowns; compute determinant; non-zero (within threshold) means inside bounds)
+        let p = point - self.origin;
+
+        let aa = self.a.dot(self.a);
+        let ba = self.b.dot(self.a);
+        let ab = self.a.dot(self.b);
+        let bb = self.b.dot(self.b);
+        let pa = p.dot(self.a);
+        let pb = p.dot(self.b);
+
+        let da = pa * bb - ba * pb;
+        let db = aa * pb - pa * ab;
+        let d = aa * bb - ba * ab;
+
+        let sa = da / d;
+        let sb = db / d;
+
+        let threshold = 1e-4;
+        let min = -threshold;
+        let max = 1.0 + threshold;
+        let range = min..max;
+
+        if !range.contains(&sa) || !range.contains(&sb) {
+            return None;
+        }
 
         // Geometry {
         //    point,
