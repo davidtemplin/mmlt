@@ -39,11 +39,11 @@ impl SceneConfig {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct SceneConfig {
-    image: ImageConfig,
-    camera: CameraConfig,
-    lights: Vec<LightConfig>,
-    objects: Vec<ObjectConfig>,
+pub struct SceneConfig {
+    pub image: ImageConfig,
+    pub camera: CameraConfig,
+    pub lights: Vec<LightConfig>,
+    pub objects: Vec<ObjectConfig>,
 }
 
 impl Scene {

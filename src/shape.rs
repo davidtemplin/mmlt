@@ -87,13 +87,13 @@ pub enum ShapeConfig {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SphereConfig {
-    id: String,
     center: PointConfig,
     radius: f64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ParallelogramConfig {
-    id: String,
-    points: Vec<PointConfig>,
+    origin: PointConfig,
+    a: PointConfig,
+    b: PointConfig,
 }

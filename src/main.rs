@@ -34,11 +34,10 @@ fn main() {
 }
 
 fn execute() -> Result<(), String> {
-    //let args: Vec<String> = env::args().collect();
-    //let config = Config::parse(args)?;
-    //let integrator = MmltIntegrator::new();
+    let args: Vec<String> = env::args().collect();
+    let config = Config::parse(args)?;
+    let integrator = MmltIntegrator::new();
     let scene = Scene::load(String::from("/Users/david/Desktop/mmlt/scenes/scene-1.yml"))?;
-    Ok(())
-    //let image = integrator.integrate(&scene);
-    //image.write(config.image_path)
+    let image = integrator.integrate(&scene);
+    image.write(config.image_path)
 }

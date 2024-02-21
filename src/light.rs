@@ -72,7 +72,7 @@ impl LightConfig {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DiffuseAreaLightConfig {
-    id: String,
-    shape: ShapeConfig,
-    spectrum: SpectrumConfig,
+    pub id: String,
+    pub shape: ShapeConfig,
+    pub spectrum: SpectrumConfig,
 }
