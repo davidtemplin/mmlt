@@ -192,6 +192,7 @@ impl<'a> Path<'a> {
     }
 
     // TODO: sometimes we sample a point, sometimes a ray; this might require 1 or 2 random numbers; ensure consistency somehow
+    // TODO: ensure sampling consistency throughout code
     pub fn connect_full_light_path(
         scene: &'a Scene,
         sampler: &mut impl Sampler,
@@ -313,7 +314,7 @@ impl<'a> Path<'a> {
         let mut i: usize = 0;
 
         while interactions.len() > 0 {
-            let interaction = interactions.remove(0);
+            let interaction = interactions.remove(0); // TODO: use VecDeque
             let current_geometry = interaction.geometry();
             let next_geometry = interactions.get(0).map(Interaction::geometry);
             match interaction {

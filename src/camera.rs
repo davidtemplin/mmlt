@@ -1,8 +1,10 @@
+use std::f64::consts::PI;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{
     geometry::Geometry,
-    interaction::{CameraInteraction, Interaction, Orientation},
+    interaction::{CameraInteraction, Interaction},
     ray::Ray,
     sampler::Sampler,
     spectrum::Spectrum,
@@ -74,7 +76,24 @@ impl Camera for PinholeCamera {
 
 impl PinholeCamera {
     pub fn configure(config: PinholeCameraConfig) -> PinholeCamera {
-        todo!()
+        let origin = Vector::configure(&config.origin);
+        let pixel_height = 512.0; // TODO!!!! Also don't assume degrees
+        let distance =
+            pixel_height / (2.0 * (config.field_of_view.value / 2.0) * (PI / 180.0).tan());
+        let w = Vector::configure(&config.direction).norm();
+        let u = w.cross(Vector::new(0.0, 1.0, 0.0)).norm();
+        let v = u.cross(w);
+
+        PinholeCamera {
+            id: String::from("camera"),
+            u,
+            v,
+            w,
+            origin,
+            distance,
+            pixel_width: 512.0,
+            pixel_height: 512.0,
+        }
     }
 }
 

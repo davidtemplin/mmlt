@@ -4,7 +4,11 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn parse(args: Vec<String>) -> Result<Config, String> {
-        todo!()
+    pub fn parse(_args: Vec<String>) -> Result<Config, String> {
+        let config = Config {
+            scene_path: String::from("/Users/david/Desktop/mmlt/scenes/scene-1.yml"),
+            image_path: String::from("/Users/david/Desktop/image.pfm"),
+        };
+        Ok(config)
     }
 }

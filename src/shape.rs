@@ -6,6 +6,7 @@ use crate::{
     geometry::Geometry,
     ray::Ray,
     sampler::Sampler,
+    util,
     vector::{Point, PointConfig, Vector},
 };
 
@@ -35,7 +36,14 @@ impl Shape for Sphere {
     }
 
     fn sample_intersection(&self, sampler: &mut dyn Sampler) -> Geometry {
-        todo!()
+        let u1 = sampler.sample(0.0..1.0);
+        let u2 = sampler.sample(0.0..1.0);
+        let point = self.center + util::uniform_sample_sphere(u1, u2) * self.radius;
+        Geometry {
+            point,
+            direction: point.norm(),
+            normal: point.norm(),
+        }
     }
 
     fn intersect(&self, ray: Ray) -> Option<Geometry> {

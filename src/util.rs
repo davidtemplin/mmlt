@@ -1,3 +1,5 @@
+use std::f64::consts::PI;
+
 use crate::vector::Vector;
 
 pub fn direction_to_area(direction: Vector, normal: Vector) -> f64 {
@@ -41,4 +43,49 @@ pub fn erf_inv(x: f64) -> f64 {
         p = 2.83297682 + p * w;
     }
     return p * x;
+}
+
+pub fn concentric_sample_disk(u1: f64, u2: f64) -> (f64, f64) {
+    // Map uniform random numbers to $[-1,1]^2$
+    let u_offset_x = 2.0 * u1 - 1.0;
+    let u_offset_y = 2.0 * u2 - 1.0;
+
+    // Handle degeneracy at the origin
+    if u_offset_x == 0.0 && u_offset_y == 0.0 {
+        return (0.0, 0.0);
+    }
+
+    // Apply concentric mapping to point
+    let (theta, r) = if u_offset_x.abs() > u_offset_y.abs() {
+        (u_offset_x, (PI / 4.0) * (u_offset_y / u_offset_x))
+    } else {
+        (
+            u_offset_y,
+            (PI / 2.0 - PI / 4.0) * (u_offset_x / u_offset_y),
+        )
+    };
+
+    // Done
+    (r * theta.cos(), r * theta.sin())
+}
+
+pub fn cosine_sample_hemisphere(u1: f64, u2: f64) -> Vector {
+    let (x, y) = concentric_sample_disk(u1, u2);
+    let z = f64::max(0.0, 1.0 - x * x - y * y).sqrt();
+    Vector::new(x, y, z)
+}
+
+pub fn same_hemisphere(w: Vector, wp: Vector) -> bool {
+    w.z * wp.z > 0.0
+}
+
+pub fn abs_cos_theta(v: Vector) -> f64 {
+    v.z
+}
+
+pub fn uniform_sample_sphere(u1: f64, u2: f64) -> Vector {
+    let z = 1.0 - 2.0 * u1;
+    let r = f64::max(0.0, 1.0 - z * z).sqrt();
+    let phi = 2.0 * PI * u2;
+    Vector::new(r * phi.cos(), r * phi.sin(), z)
 }

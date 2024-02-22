@@ -1,6 +1,6 @@
 use std::f64::consts::PI;
 
-use crate::{sampler::Sampler, spectrum::Spectrum, vector::Vector};
+use crate::{sampler::Sampler, spectrum::Spectrum, util, vector::Vector};
 
 pub struct Bsdf {
     pub bxdfs: Vec<Box<dyn Bxdf>>,
@@ -31,6 +31,7 @@ impl Bsdf {
             .iter()
             .map(|bxdf| bxdf.probability(wo, wi))
             .fold(0.0, |a, b| a + b)
+            / (self.bxdfs.len() as f64)
     }
 }
 
@@ -45,15 +46,21 @@ impl DiffuseBrdf {
 }
 
 impl Bxdf for DiffuseBrdf {
-    fn evaluate(&self, wo: Vector, wi: Vector) -> Spectrum {
+    fn evaluate(&self, _wo: Vector, _wi: Vector) -> Spectrum {
         self.scale * (1.0 / PI)
     }
 
-    fn probability(&self, _wo: Vector, _wi: Vector) -> f64 {
-        1.0 / (2.0 * PI)
+    fn probability(&self, wo: Vector, wi: Vector) -> f64 {
+        if !util::same_hemisphere(wo, wi) {
+            util::abs_cos_theta(wi) * (1.0 / PI)
+        } else {
+            0.0
+        }
     }
 
     fn sample_direction(&self, sampler: &mut dyn Sampler) -> Vector {
-        todo!()
+        let u1 = sampler.sample(0.0..1.0);
+        let u2 = sampler.sample(0.0..1.0);
+        util::cosine_sample_hemisphere(u1, u2)
     }
 }
