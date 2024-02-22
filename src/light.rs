@@ -33,7 +33,7 @@ impl Light for DiffuseAreaLight {
         }
     }
 
-    fn probability(&self, direction: Vector) -> f64 {
+    fn probability(&self, _direction: Vector) -> f64 {
         1.0 / self.shape.area()
     }
 

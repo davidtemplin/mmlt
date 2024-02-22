@@ -1,15 +1,8 @@
 use std::cell::OnceCell;
 
 use crate::{
-    bsdf::Bsdf,
-    camera::Camera,
-    geometry::Geometry,
-    light::Light,
-    object::Object,
-    ray::Ray,
-    sampler::Sampler,
-    spectrum::Spectrum,
-    vector::{Point, Vector},
+    bsdf::Bsdf, camera::Camera, geometry::Geometry, light::Light, object::Object, ray::Ray,
+    sampler::Sampler, spectrum::Spectrum, vector::Vector,
 };
 
 pub enum Orientation {

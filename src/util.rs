@@ -15,13 +15,11 @@ pub fn geometry_term(direction: Vector, normal1: Vector, normal2: Vector) -> f64
 }
 
 pub fn erf_inv(x: f64) -> f64 {
-    let mut w = 0.0;
-    let mut p = 0.0;
     let x = x.clamp(-0.99999, 0.99999);
-    w = -f64::ln((1.0 - x) * (1.0 + x));
+    let mut w = -f64::ln((1.0 - x) * (1.0 + x));
     if w < 5.0 {
         w = w - 2.5;
-        p = 2.81022636e-08;
+        let mut p = 2.81022636e-08;
         p = 3.43273939e-07 + p * w;
         p = -3.5233877e-06 + p * w;
         p = -4.39150654e-06 + p * w;
@@ -30,9 +28,10 @@ pub fn erf_inv(x: f64) -> f64 {
         p = -0.00417768164 + p * w;
         p = 0.246640727 + p * w;
         p = 1.50140941 + p * w;
+        p * x
     } else {
         w = f64::sqrt(w) - 3.0;
-        p = -0.000200214257;
+        let mut p = -0.000200214257;
         p = 0.000100950558 + p * w;
         p = 0.00134934322 + p * w;
         p = -0.00367342844 + p * w;
@@ -41,8 +40,8 @@ pub fn erf_inv(x: f64) -> f64 {
         p = 0.00943887047 + p * w;
         p = 1.00167406 + p * w;
         p = 2.83297682 + p * w;
+        p * x
     }
-    return p * x;
 }
 
 pub fn concentric_sample_disk(u1: f64, u2: f64) -> (f64, f64) {

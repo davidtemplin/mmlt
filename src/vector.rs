@@ -28,20 +28,8 @@ impl Vector {
         Vector { x, y, z }
     }
 
-    pub fn fill(n: f64) -> Vector {
-        Vector::new(n, n, n)
-    }
-
     pub fn dot(&self, rhs: Vector) -> f64 {
         self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
-    }
-
-    pub fn mul(&self, rhs: Vector) -> Vector {
-        Vector {
-            x: self.x * rhs.x,
-            y: self.y * rhs.y,
-            z: self.z * rhs.z,
-        }
     }
 
     pub fn norm(&self) -> Vector {

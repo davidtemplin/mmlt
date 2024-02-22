@@ -1,8 +1,6 @@
-use std::collections::VecDeque;
-
 use crate::{
     camera::Camera,
-    geometry::{self, Geometry},
+    geometry::Geometry,
     interaction::{Interaction, ObjectInteraction, Orientation},
     light::Light,
     object::Object,
