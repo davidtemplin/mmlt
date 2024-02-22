@@ -5,6 +5,7 @@ pub struct Config {
 
 impl Config {
     pub fn parse(_args: Vec<String>) -> Result<Config, String> {
+        // TODO!!
         let config = Config {
             scene_path: String::from("/Users/david/Desktop/mmlt/scenes/scene-1.yml"),
             image_path: String::from("/Users/david/Desktop/image.pfm"),
