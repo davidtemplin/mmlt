@@ -2,11 +2,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     bsdf::{Bsdf, DiffuseBrdf},
+    geometry::Geometry,
     texture::{Texture, TextureConfig},
 };
 
 pub trait Material {
-    fn compute_bsdf(&self) -> Bsdf;
+    fn compute_bsdf(&self, geometry: Geometry) -> Bsdf;
 }
 
 pub struct MatteMaterial {

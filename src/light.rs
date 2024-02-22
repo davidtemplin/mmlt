@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    interaction::Interaction,
+    geometry::Geometry,
+    interaction::{Interaction, LightInteraction},
     ray::Ray,
     sampler::Sampler,
     shape::{Shape, ShapeConfig},
@@ -13,7 +14,7 @@ pub trait Light {
     fn radiance(&self, direction: Vector, normal: Vector) -> Spectrum;
     fn probability(&self, direction: Vector) -> f64;
     fn sample_interaction(&self, sampler: &dyn Sampler) -> Interaction;
-    fn intersect(&self, ray: Ray) -> Option<Interaction<'_>>;
+    fn intersect(&self, ray: Ray) -> Option<Interaction>;
     fn id(&self) -> u64;
 }
 
@@ -33,15 +34,34 @@ impl Light for DiffuseAreaLight {
     }
 
     fn probability(&self, direction: Vector) -> f64 {
-        self.shape.probability(direction)
+        1.0 / self.shape.area()
     }
 
     fn sample_interaction(&self, sampler: &dyn Sampler) -> Interaction {
-        self.shape.sample_interaction(sampler)
+        let geometry = self.shape.sample_intersection(sampler);
+        let light_interaction = LightInteraction {
+            light: self,
+            geometry: Geometry {
+                point: geometry.point,
+                direction: geometry.direction,
+                normal: geometry.normal,
+            },
+        };
+        Interaction::Light(light_interaction)
     }
 
     fn intersect(&self, ray: Ray) -> Option<Interaction> {
-        self.shape.intersect(ray)
+        let geometry = self.shape.intersect(ray)?;
+        let light_interaction = LightInteraction {
+            light: self,
+            geometry: Geometry {
+                point: geometry.point,
+                direction: geometry.direction,
+                normal: geometry.normal,
+            },
+        };
+        let interaction = Interaction::Light(light_interaction);
+        Some(interaction)
     }
 
     fn id(&self) -> u64 {

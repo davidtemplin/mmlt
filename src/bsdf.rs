@@ -1,6 +1,6 @@
 use std::f64::consts::PI;
 
-use crate::{spectrum::Spectrum, vector::Vector};
+use crate::{ray::Ray, sampler::Sampler, spectrum::Spectrum, vector::Vector};
 
 pub struct Bsdf {
     pub bxdfs: Vec<Box<dyn Bxdf>>,
@@ -17,6 +17,14 @@ impl Bsdf {
             .iter()
             .map(|bxdf| bxdf.evaluate(wo, wi))
             .fold(Spectrum::black(), |a, b| a + b)
+    }
+
+    pub fn generate_ray(&self, sampler: &dyn Sampler) -> Ray {
+        todo!()
+    }
+
+    pub fn probability(&self, wo: Vector, wi: Vector) -> f64 {
+        todo!()
     }
 }
 

@@ -9,6 +9,7 @@ use crate::{
 mod bsdf;
 mod camera;
 mod config;
+mod geometry;
 mod image;
 mod integrator;
 mod interaction;

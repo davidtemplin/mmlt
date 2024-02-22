@@ -1,36 +1,32 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    interaction::Interaction, material::MaterialConfig, ray::Ray, sampler::Sampler,
-    shape::ShapeConfig, spectrum::Spectrum, vector::Vector,
+    bsdf::Bsdf,
+    geometry::Geometry,
+    interaction::Interaction,
+    material::{Material, MaterialConfig},
+    ray::Ray,
+    shape::{Shape, ShapeConfig},
 };
 
 pub trait Object {
-    fn reflectance(&self, wo: Vector, n: Vector, wi: Vector) -> Spectrum;
-    fn probability(&self, wo: Vector, n: Vector, wi: Vector) -> f64;
-    fn generate_ray(&self, n: Vector, wi: Vector, sampler: &dyn Sampler) -> Ray;
-    fn intersect(&self, ray: Ray) -> Option<Interaction<'_>>;
+    fn intersect(&self, ray: Ray) -> Option<Interaction>;
+    fn compute_bsdf(&self, geometry: Geometry) -> Bsdf;
     fn id(&self) -> u64;
 }
 
-pub struct GeometricObject {}
+pub struct GeometricObject {
+    shape: Box<dyn Shape>,
+    material: Box<dyn Material>,
+}
 
 impl Object for GeometricObject {
-    // TODO: remove reflectance, probability, generate_ray; these are methods of BSDF
-    fn reflectance(&self, wo: Vector, n: Vector, wi: Vector) -> Spectrum {
+    fn intersect(&self, ray: Ray) -> Option<Interaction> {
         todo!()
     }
 
-    fn probability(&self, wo: Vector, n: Vector, wi: Vector) -> f64 {
-        todo!()
-    }
-
-    fn generate_ray(&self, n: Vector, wi: Vector, sampler: &dyn Sampler) -> Ray {
-        todo!()
-    }
-
-    fn intersect(&self, ray: Ray) -> Option<Interaction<'_>> {
-        todo!()
+    fn compute_bsdf(&self, geometry: Geometry) -> Bsdf {
+        self.material.compute_bsdf(geometry)
     }
 
     fn id(&self) -> u64 {

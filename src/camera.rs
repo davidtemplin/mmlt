@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    geometry::Geometry,
     interaction::{CameraInteraction, Interaction, Orientation},
     ray::Ray,
     sampler::Sampler,
@@ -53,10 +54,11 @@ impl Camera for PinholeCamera {
         let direction = (u + v + w).norm();
         let camera_interaction = CameraInteraction {
             camera: self,
-            point: self.origin,
-            direction,
-            normal: self.w,
-            orientation: Orientation::Camera,
+            geometry: Geometry {
+                point: self.origin,
+                direction,
+                normal: self.w,
+            },
         };
         Interaction::Camera(camera_interaction)
     }

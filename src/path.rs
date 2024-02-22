@@ -1,6 +1,9 @@
+use std::collections::VecDeque;
+
 use crate::{
     camera::Camera,
-    interaction::{Interaction, Orientation},
+    geometry::{self, Geometry},
+    interaction::{Interaction, ObjectInteraction, Orientation},
     light::Light,
     object::Object,
     ray::Ray,
@@ -41,8 +44,7 @@ pub struct LightVertex<'a> {
 
 pub struct ObjectVertex<'a> {
     object: &'a (dyn Object + 'a),
-    point: Point,
-    normal: Vector,
+    interaction: ObjectInteraction<'a>,
     wo: Vector,
     wi: Vector,
     direction_to_area: f64,
@@ -60,7 +62,7 @@ impl<'a> Vertex<'a> {
         match self {
             Vertex::Camera(v) => v.camera.importance(v.point, v.wi) * v.geometry_term,
             Vertex::Light(v) => v.light.radiance(v.wo, v.normal),
-            Vertex::Object(v) => v.object.reflectance(v.wo, v.normal, v.wi) * v.geometry_term,
+            Vertex::Object(v) => v.interaction.reflectance(v.wo, v.wi) * v.geometry_term,
         }
     }
 
@@ -69,10 +71,8 @@ impl<'a> Vertex<'a> {
             Vertex::Camera(v) => v.camera.probability(v.point, v.wi) * v.direction_to_area, // TODO: need to let camera determine PDF, store it; could take more than 1 sample
             Vertex::Light(v) => v.light.probability(v.wo) * v.direction_to_area, // TODO: need to include PDF of sampling light from scene
             Vertex::Object(v) => match path_type {
-                PathType::Camera => {
-                    v.object.probability(v.wo, v.normal, v.wi) * v.direction_to_area
-                }
-                PathType::Light => v.object.probability(v.wi, v.normal, v.wo) * v.direction_to_area,
+                PathType::Camera => v.interaction.probability(v.wo, v.wi) * v.direction_to_area,
+                PathType::Light => v.interaction.probability(v.wi, v.wo) * v.direction_to_area,
             },
         }
     }
@@ -106,6 +106,14 @@ impl Technique {
         let camera = (r * path_length as f64) as usize;
         let light = path_length - camera;
         Technique { camera, light }
+    }
+
+    pub fn orientation(&self, n: usize) -> Orientation {
+        if n < self.camera {
+            Orientation::Camera
+        } else {
+            Orientation::Light
+        }
     }
 }
 
@@ -154,7 +162,7 @@ impl<'a> Path<'a> {
             Path::connect_full_light_path(scene, sampler, technique)
         } else if technique.camera == 1 {
             if technique.light == 1 {
-                Path::connect_camera_to_light(scene, sampler)
+                Path::connect_camera_to_light(scene, sampler, technique)
             } else {
                 Path::connect_camera_to_light_subpath(scene, sampler, technique)
             }
@@ -172,14 +180,15 @@ impl<'a> Path<'a> {
     pub fn connect_camera_to_light(
         scene: &'a Scene,
         sampler: &mut impl Sampler,
+        technique: Technique,
     ) -> Option<Path<'a>> {
         sampler.start_stream(CAMERA_STREAM);
         let camera_interaction = scene.camera.sample_interaction(sampler);
         sampler.start_stream(LIGHT_STREAM);
         let light = scene.sample_light(sampler);
         let light_interaction = light.sample_interaction(sampler);
-        let interactions = vec![camera_interaction, light_interaction];
-        Path::compute(&interactions)
+        let mut interactions = vec![camera_interaction, light_interaction];
+        Path::compute(&mut interactions, technique)
     }
 
     // TODO: sometimes we sample a point, sometimes a ray; this might require 1 or 2 random numbers; ensure consistency somehow
@@ -191,9 +200,9 @@ impl<'a> Path<'a> {
         sampler.start_stream(LIGHT_STREAM);
         let light = scene.sample_light(sampler);
         let light_interaction = light.sample_interaction(sampler);
-        let interactions = Path::trace(scene, sampler, light_interaction, technique.light)?;
+        let mut interactions = Path::trace(scene, sampler, light_interaction, technique.light)?;
         interactions.last().filter(|i| i.is_camera())?;
-        Path::compute(&interactions)
+        Path::compute(&mut interactions, technique)
     }
 
     pub fn connect_full_camera_path(
@@ -203,9 +212,9 @@ impl<'a> Path<'a> {
     ) -> Option<Path<'a>> {
         sampler.start_stream(CAMERA_STREAM);
         let camera_interaction = scene.camera.sample_interaction(sampler);
-        let interactions = Path::trace(scene, sampler, camera_interaction, technique.camera)?;
+        let mut interactions = Path::trace(scene, sampler, camera_interaction, technique.camera)?;
         interactions.last().filter(|i| i.is_light())?;
-        Path::compute(&interactions)
+        Path::compute(&mut interactions, technique)
     }
 
     pub fn connect_camera_to_light_subpath(
@@ -220,10 +229,13 @@ impl<'a> Path<'a> {
         let last = interactions.last().filter(|i| i.is_object())?;
         sampler.start_stream(CAMERA_STREAM);
         let camera_interaction = scene.camera.sample_interaction(sampler);
-        let ray = Ray::new(last.point(), camera_interaction.point() - last.point());
+        let ray = Ray::new(
+            last.geometry().point,
+            camera_interaction.geometry().point - last.geometry().point,
+        );
         let interaction = scene.intersect(ray).filter(|i| i.is_camera())?;
         interactions.push(interaction);
-        Path::compute(&interactions)
+        Path::compute(&mut interactions, technique)
     }
 
     pub fn connect_camera_subpath_to_light(
@@ -238,10 +250,13 @@ impl<'a> Path<'a> {
         sampler.start_stream(LIGHT_STREAM);
         let light = scene.sample_light(sampler);
         let light_interaction = light.sample_interaction(sampler);
-        let ray = Ray::new(last.point(), light_interaction.point() - last.point());
+        let ray = Ray::new(
+            last.geometry().point,
+            light_interaction.geometry().point - last.geometry().point,
+        );
         let interaction = scene.intersect(ray).filter(|i| i.is_light())?;
         interactions.push(interaction);
-        Path::compute(&interactions)
+        Path::compute(&mut interactions, technique)
     }
 
     pub fn connect_camera_subpath_to_light_subpath(
@@ -260,14 +275,17 @@ impl<'a> Path<'a> {
             Path::trace(scene, sampler, light_interaction, technique.light)?;
         let camera_last = camera_interactions.last().filter(|i| i.is_object())?;
         let light_last = light_interactions.last().filter(|i| i.is_object())?;
-        let ray = Ray::new(camera_last.point(), light_last.point() - light_last.point());
+        let ray = Ray::new(
+            camera_last.geometry().point,
+            light_last.geometry().point - light_last.geometry().point,
+        );
         let id = light_last.id();
         let interaction = scene.intersect(ray).filter(|i| i.id() == id)?;
         light_interactions.reverse();
         let mut interactions = camera_interactions;
         interactions.push(interaction);
         interactions.extend(light_interactions);
-        Path::compute(&interactions)
+        Path::compute(&mut interactions, technique)
     }
 
     fn trace(
@@ -287,32 +305,32 @@ impl<'a> Path<'a> {
         Some(stack)
     }
 
-    fn compute(interactions: &Vec<Interaction<'a>>) -> Option<Path<'a>> {
+    fn compute(interactions: &mut Vec<Interaction<'a>>, technique: Technique) -> Option<Path<'a>> {
         let mut vertices: Vec<Vertex<'a>> = Vec::new();
 
-        let technique = Technique {
-            camera: 0,
-            light: 0,
-        };
+        let mut previous_geometry: Option<Geometry> = None;
 
-        for i in 0..interactions.len() {
-            match &interactions[i] {
-                Interaction::Camera(camera_interaction) => match camera_interaction.orientation {
+        let mut i: usize = 0;
+
+        while interactions.len() > 0 {
+            let interaction = interactions.remove(0);
+            let current_geometry = interaction.geometry();
+            let next_geometry = interactions.get(0).map(Interaction::geometry);
+            match interaction {
+                Interaction::Camera(camera_interaction) => match technique.orientation(i) {
                     Orientation::Camera => {
-                        let next_interaction = &interactions[i + 1];
-
                         let camera_vertex = CameraVertex {
                             camera: camera_interaction.camera,
-                            point: camera_interaction.point,
-                            wi: camera_interaction.direction,
+                            point: camera_interaction.geometry.point,
+                            wi: camera_interaction.geometry.direction,
                             direction_to_area: util::direction_to_area(
-                                camera_interaction.direction,
-                                next_interaction.normal(),
+                                camera_interaction.geometry.direction,
+                                next_geometry?.normal,
                             ),
                             geometry_term: util::geometry_term(
-                                camera_interaction.direction,
-                                camera_interaction.normal,
-                                next_interaction.normal(),
+                                camera_interaction.geometry.direction,
+                                camera_interaction.geometry.normal,
+                                next_geometry?.normal,
                             ),
                         };
 
@@ -321,8 +339,8 @@ impl<'a> Path<'a> {
                     Orientation::Light => {
                         let camera_vertex = CameraVertex {
                             camera: camera_interaction.camera,
-                            point: camera_interaction.point,
-                            wi: camera_interaction.direction,
+                            point: camera_interaction.geometry.point,
+                            wi: camera_interaction.geometry.direction,
                             direction_to_area: 1.0,
                             geometry_term: 1.0,
                         };
@@ -330,83 +348,75 @@ impl<'a> Path<'a> {
                         vertices.push(Vertex::Camera(camera_vertex));
                     }
                 },
-                Interaction::Light(light_interaction) => match light_interaction.orientation {
+                Interaction::Light(light_interaction) => match technique.orientation(i) {
                     Orientation::Camera => {
                         let light_vertex = LightVertex {
                             light: light_interaction.light,
-                            point: light_interaction.point,
-                            wo: light_interaction.direction * -1.0,
-                            normal: light_interaction.normal,
+                            point: light_interaction.geometry.point,
+                            wo: light_interaction.geometry.direction * -1.0,
+                            normal: light_interaction.geometry.normal,
                             direction_to_area: 1.0,
                         };
 
                         vertices.push(Vertex::Light(light_vertex));
                     }
                     Orientation::Light => {
-                        let previous_interaction = &interactions[i - 1];
-
                         let light_vertex = LightVertex {
                             light: light_interaction.light,
-                            point: light_interaction.point,
-                            wo: light_interaction.direction,
-                            normal: light_interaction.normal,
+                            point: light_interaction.geometry.point,
+                            wo: light_interaction.geometry.direction,
+                            normal: light_interaction.geometry.normal,
                             direction_to_area: util::direction_to_area(
-                                light_interaction.direction,
-                                previous_interaction.normal(),
+                                light_interaction.geometry.direction,
+                                previous_geometry?.normal,
                             ),
                         };
 
                         vertices.push(Vertex::Light(light_vertex));
                     }
                 },
-                Interaction::Object(object_interaction) => match object_interaction.orientation {
+                Interaction::Object(object_interaction) => match technique.orientation(i) {
                     Orientation::Camera => {
-                        let next_interaction = &interactions[i + 1];
-
-                        let wi = next_interaction.point() - object_interaction.point;
+                        let wi = next_geometry?.point - object_interaction.geometry.point;
 
                         let object_vertex = ObjectVertex {
                             object: object_interaction.object,
-                            normal: object_interaction.normal,
-                            point: object_interaction.point,
-                            wo: object_interaction.direction * -1.0,
+                            interaction: object_interaction,
+                            wo: current_geometry.direction * -1.0,
                             wi,
-                            direction_to_area: util::direction_to_area(
-                                wi,
-                                next_interaction.normal(),
-                            ),
+                            direction_to_area: util::direction_to_area(wi, next_geometry?.normal),
                             geometry_term: util::geometry_term(
                                 wi,
-                                object_interaction.normal,
-                                next_interaction.normal(),
+                                current_geometry.normal,
+                                next_geometry?.normal,
                             ),
                         };
 
                         vertices.push(Vertex::Object(object_vertex));
                     }
                     Orientation::Light => {
-                        let previous_interaction = &interactions[i - 1];
-                        let wo = previous_interaction.point() - object_interaction.point;
+                        let wo = previous_geometry?.point - object_interaction.geometry.point;
                         let object_vertex = ObjectVertex {
                             object: object_interaction.object,
-                            normal: object_interaction.normal,
-                            point: object_interaction.point,
+                            interaction: object_interaction,
                             wo,
-                            wi: object_interaction.direction * -1.0,
+                            wi: current_geometry.direction * -1.0,
                             direction_to_area: util::direction_to_area(
                                 wo,
-                                previous_interaction.normal(),
+                                previous_geometry?.normal,
                             ),
                             geometry_term: util::geometry_term(
                                 wo,
-                                object_interaction.normal,
-                                previous_interaction.normal(),
+                                current_geometry.normal,
+                                previous_geometry?.normal,
                             ),
                         };
                         vertices.push(Vertex::Object(object_vertex));
                     }
                 },
             }
+            previous_geometry.replace(current_geometry);
+            i = i + 1;
         }
 
         // TODO: compute this!

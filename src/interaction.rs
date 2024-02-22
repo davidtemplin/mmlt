@@ -1,9 +1,14 @@
+use std::cell::OnceCell;
+
 use crate::{
+    bsdf::Bsdf,
     camera::Camera,
+    geometry::Geometry,
     light::Light,
     object::Object,
     ray::Ray,
     sampler::Sampler,
+    spectrum::Spectrum,
     vector::{Point, Vector},
 };
 
@@ -14,26 +19,18 @@ pub enum Orientation {
 
 pub struct CameraInteraction<'a> {
     pub camera: &'a (dyn Camera + 'a),
-    pub point: Point,
-    pub direction: Vector,
-    pub normal: Vector,
-    pub orientation: Orientation,
+    pub geometry: Geometry,
 }
 
 pub struct LightInteraction<'a> {
     pub light: &'a (dyn Light + 'a),
-    pub point: Point,
-    pub direction: Vector,
-    pub normal: Vector,
-    pub orientation: Orientation,
+    pub geometry: Geometry,
 }
 
 pub struct ObjectInteraction<'a> {
     pub object: &'a (dyn Object + 'a),
-    pub point: Point,
-    pub normal: Vector,
-    pub direction: Vector,
-    pub orientation: Orientation,
+    pub geometry: Geometry,
+    pub bsdf: OnceCell<Bsdf>,
 }
 
 pub enum Interaction<'a> {
@@ -42,17 +39,32 @@ pub enum Interaction<'a> {
     Object(ObjectInteraction<'a>),
 }
 
+impl<'a> ObjectInteraction<'a> {
+    pub fn get_bsdf(&self) -> &Bsdf {
+        self.bsdf
+            .get_or_init(|| self.object.compute_bsdf(self.geometry))
+    }
+
+    pub fn generate_ray(&self, sampler: &dyn Sampler) -> Ray {
+        self.get_bsdf().generate_ray(sampler)
+    }
+
+    pub fn probability(&self, wo: Vector, wi: Vector) -> f64 {
+        self.get_bsdf().probability(wo, wi)
+    }
+
+    pub fn reflectance(&self, wo: Vector, wi: Vector) -> Spectrum {
+        self.get_bsdf().evaluate(wo, wi)
+    }
+}
+
 impl<'a> Interaction<'a> {
     pub fn generate_ray(&self, sampler: &dyn Sampler) -> Option<Ray> {
         match self {
             Interaction::Camera(_) => None,
             Interaction::Light(_) => None,
             Interaction::Object(object_interaction) => {
-                Some(object_interaction.object.generate_ray(
-                    object_interaction.normal,
-                    object_interaction.direction,
-                    sampler,
-                ))
+                Some(object_interaction.generate_ray(sampler))
             }
         }
     }
@@ -65,27 +77,19 @@ impl<'a> Interaction<'a> {
         }
     }
 
-    pub fn normal(&self) -> Vector {
+    pub fn geometry(&self) -> Geometry {
         match self {
-            Interaction::Camera(c) => c.normal,
-            Interaction::Light(l) => l.normal,
-            Interaction::Object(o) => o.normal,
-        }
-    }
-
-    pub fn point(&self) -> Point {
-        match self {
-            Interaction::Camera(c) => c.point,
-            Interaction::Light(l) => l.point,
-            Interaction::Object(o) => o.point,
+            Interaction::Camera(i) => i.geometry,
+            Interaction::Light(i) => i.geometry,
+            Interaction::Object(i) => i.geometry,
         }
     }
 
     pub fn distance(&self) -> f64 {
         match self {
-            Interaction::Camera(i) => i.direction.len(),
-            Interaction::Light(i) => i.direction.len(),
-            Interaction::Object(i) => i.direction.len(),
+            Interaction::Camera(i) => i.geometry.direction.len(),
+            Interaction::Light(i) => i.geometry.direction.len(),
+            Interaction::Object(i) => i.geometry.direction.len(),
         }
     }
 

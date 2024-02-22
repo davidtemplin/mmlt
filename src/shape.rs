@@ -3,6 +3,7 @@ use std::f64::consts::PI;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    geometry::{self, Geometry},
     interaction::{Interaction, ObjectInteraction, Orientation},
     ray::Ray,
     sampler::Sampler,
@@ -10,9 +11,9 @@ use crate::{
 };
 
 pub trait Shape {
-    fn probability(&self, direction: Vector) -> f64;
-    fn sample_interaction(&self, sampler: &dyn Sampler) -> Interaction;
-    fn intersect(&self, ray: Ray) -> Option<Interaction>;
+    fn area(&self) -> f64;
+    fn sample_intersection(&self, sampler: &dyn Sampler) -> Geometry;
+    fn intersect(&self, ray: Ray) -> Option<Geometry>;
 }
 
 pub struct Sphere {
@@ -21,16 +22,15 @@ pub struct Sphere {
 }
 
 impl Shape for Sphere {
-    // TODO: remove probability, sample_interaction; instead, use area() and intersect() -> Geometry
-    fn probability(&self, direction: Vector) -> f64 {
-        1.0 / (4.0 * PI * self.radius * self.radius)
+    fn area(&self) -> f64 {
+        4.0 * PI * self.radius
     }
 
-    fn sample_interaction(&self, sampler: &dyn Sampler) -> Interaction {
+    fn sample_intersection(&self, sampler: &dyn Sampler) -> Geometry {
         todo!()
     }
 
-    fn intersect(&self, ray: Ray) -> Option<Interaction> {
+    fn intersect(&self, ray: Ray) -> Option<Geometry> {
         let c = self.center - ray.origin;
         let b = c.dot(ray.direction);
         let mut det = b * b - c.dot(c) + self.radius * self.radius;
@@ -46,7 +46,18 @@ impl Shape for Sphere {
                 return None;
             }
         }
-        todo!()
+
+        let point = ray.origin + ray.direction * t;
+        let normal = (point - self.center).norm();
+        let direction = ray.direction * t;
+
+        let geometry = Geometry {
+            point,
+            normal,
+            direction,
+        };
+
+        Some(geometry)
     }
 }
 
@@ -57,19 +68,18 @@ pub struct Parallelogram {
 }
 
 impl Shape for Parallelogram {
-    fn probability(&self, _direction: Vector) -> f64 {
+    fn area(&self) -> f64 {
         let left_length = self.a.len();
         let right_length = self.b.len();
         let area = left_length * right_length;
-        1.0 / area
+        area
     }
 
-    fn sample_interaction(&self, sampler: &dyn Sampler) -> Interaction {
+    fn sample_intersection(&self, sampler: &dyn Sampler) -> Geometry {
         todo!()
     }
 
-    // TODO: this cannot compute an interaction; it can only compute the normal, point, direction (geometry)
-    fn intersect(&self, ray: Ray) -> Option<Interaction> {
+    fn intersect(&self, ray: Ray) -> Option<Geometry> {
         let normal = self.a.cross(self.b);
 
         let nd = normal.dot(ray.direction);
@@ -107,13 +117,13 @@ impl Shape for Parallelogram {
             return None;
         }
 
-        // Geometry {
-        //    point,
-        //    direction: ray.direction * t,
-        //    normal,
-        // }
+        let geometry = Geometry {
+            point,
+            direction: ray.direction * t,
+            normal,
+        };
 
-        todo!()
+        Some(geometry)
     }
 }
 
