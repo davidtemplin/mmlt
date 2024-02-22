@@ -15,7 +15,15 @@ pub struct MatteMaterial {
 }
 
 impl MatteMaterial {
-    fn compute_bsdf(&self) -> Bsdf {
+    pub fn configure(config: &MatteMaterialConfig) -> MatteMaterial {
+        MatteMaterial {
+            texture: config.texture.configure(),
+        }
+    }
+}
+
+impl Material for MatteMaterial {
+    fn compute_bsdf(&self, geometry: Geometry) -> Bsdf {
         Bsdf {
             bxdfs: vec![Box::new(DiffuseBrdf::new(self.texture.evaluate()))],
         }
@@ -26,5 +34,18 @@ impl MatteMaterial {
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
 pub enum MaterialConfig {
-    Matte { texture: TextureConfig },
+    Matte(MatteMaterialConfig),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct MatteMaterialConfig {
+    texture: TextureConfig,
+}
+
+impl MaterialConfig {
+    pub fn configure(&self) -> Box<dyn Material> {
+        match self {
+            MaterialConfig::Matte(c) => Box::new(MatteMaterial::configure(&c)),
+        }
+    }
 }

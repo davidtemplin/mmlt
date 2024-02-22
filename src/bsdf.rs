@@ -1,6 +1,6 @@
 use std::f64::consts::PI;
 
-use crate::{ray::Ray, sampler::Sampler, spectrum::Spectrum, vector::Vector};
+use crate::{sampler::Sampler, spectrum::Spectrum, vector::Vector};
 
 pub struct Bsdf {
     pub bxdfs: Vec<Box<dyn Bxdf>>,
@@ -9,6 +9,7 @@ pub struct Bsdf {
 pub trait Bxdf {
     fn evaluate(&self, wo: Vector, wi: Vector) -> Spectrum;
     fn probability(&self, wo: Vector, wi: Vector) -> f64;
+    fn sample_direction(&self, sampler: &mut dyn Sampler) -> Vector;
 }
 
 impl Bsdf {
@@ -19,12 +20,17 @@ impl Bsdf {
             .fold(Spectrum::black(), |a, b| a + b)
     }
 
-    pub fn generate_ray(&self, sampler: &dyn Sampler) -> Ray {
-        todo!()
+    pub fn sample_direction(&self, sampler: &mut dyn Sampler) -> Vector {
+        let r = sampler.sample(0.0..1.0);
+        let i = (r * self.bxdfs.len() as f64).floor() as usize;
+        self.bxdfs[i].sample_direction(sampler)
     }
 
     pub fn probability(&self, wo: Vector, wi: Vector) -> f64 {
-        todo!()
+        self.bxdfs
+            .iter()
+            .map(|bxdf| bxdf.probability(wo, wi))
+            .fold(0.0, |a, b| a + b)
     }
 }
 
@@ -45,5 +51,9 @@ impl Bxdf for DiffuseBrdf {
 
     fn probability(&self, _wo: Vector, _wi: Vector) -> f64 {
         1.0 / (2.0 * PI)
+    }
+
+    fn sample_direction(&self, sampler: &mut dyn Sampler) -> Vector {
+        todo!()
     }
 }

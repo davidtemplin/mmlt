@@ -45,8 +45,12 @@ impl<'a> ObjectInteraction<'a> {
             .get_or_init(|| self.object.compute_bsdf(self.geometry))
     }
 
-    pub fn generate_ray(&self, sampler: &dyn Sampler) -> Ray {
-        self.get_bsdf().generate_ray(sampler)
+    pub fn generate_ray(&self, sampler: &mut dyn Sampler) -> Ray {
+        let direction = self.get_bsdf().sample_direction(sampler);
+        Ray {
+            origin: self.geometry.point,
+            direction,
+        }
     }
 
     pub fn probability(&self, wo: Vector, wi: Vector) -> f64 {
@@ -59,7 +63,7 @@ impl<'a> ObjectInteraction<'a> {
 }
 
 impl<'a> Interaction<'a> {
-    pub fn generate_ray(&self, sampler: &dyn Sampler) -> Option<Ray> {
+    pub fn generate_ray(&self, sampler: &mut dyn Sampler) -> Option<Ray> {
         match self {
             Interaction::Camera(_) => None,
             Interaction::Light(_) => None,
@@ -69,7 +73,7 @@ impl<'a> Interaction<'a> {
         }
     }
 
-    pub fn id(&self) -> u64 {
+    pub fn id(&self) -> &String {
         match self {
             Interaction::Camera(i) => i.camera.id(),
             Interaction::Light(i) => i.light.id(),

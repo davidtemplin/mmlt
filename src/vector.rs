@@ -16,6 +16,14 @@ pub struct Vector {
 }
 
 impl Vector {
+    pub fn configure(config: &VectorConfig) -> Vector {
+        Vector {
+            x: config.x,
+            y: config.y,
+            z: config.z,
+        }
+    }
+
     pub fn new(x: f64, y: f64, z: f64) -> Vector {
         Vector { x, y, z }
     }
@@ -101,12 +109,7 @@ impl Div<f64> for Vector {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct PointConfig {
-    x: f64,
-    y: f64,
-    z: f64,
-}
+pub type PointConfig = VectorConfig;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct VectorConfig {

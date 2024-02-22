@@ -14,6 +14,14 @@ pub struct RgbSpectrum {
 }
 
 impl RgbSpectrum {
+    pub fn configure(config: &SpectrumConfig) -> RgbSpectrum {
+        RgbSpectrum {
+            r: config.r,
+            g: config.g,
+            b: config.b,
+        }
+    }
+
     pub fn black() -> RgbSpectrum {
         Spectrum::fill(0.0)
     }

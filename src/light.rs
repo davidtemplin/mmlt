@@ -13,13 +13,13 @@ use crate::{
 pub trait Light {
     fn radiance(&self, direction: Vector, normal: Vector) -> Spectrum;
     fn probability(&self, direction: Vector) -> f64;
-    fn sample_interaction(&self, sampler: &dyn Sampler) -> Interaction;
+    fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction;
     fn intersect(&self, ray: Ray) -> Option<Interaction>;
-    fn id(&self) -> u64;
+    fn id(&self) -> &String;
 }
 
 pub struct DiffuseAreaLight {
-    id: u64,
+    id: String,
     shape: Box<dyn Shape>,
     radiance: Spectrum,
 }
@@ -37,7 +37,7 @@ impl Light for DiffuseAreaLight {
         1.0 / self.shape.area()
     }
 
-    fn sample_interaction(&self, sampler: &dyn Sampler) -> Interaction {
+    fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction {
         let geometry = self.shape.sample_intersection(sampler);
         let light_interaction = LightInteraction {
             light: self,
@@ -64,14 +64,18 @@ impl Light for DiffuseAreaLight {
         Some(interaction)
     }
 
-    fn id(&self) -> u64 {
-        self.id
+    fn id(&self) -> &String {
+        &self.id
     }
 }
 
 impl DiffuseAreaLight {
     pub fn configure(config: &DiffuseAreaLightConfig) -> DiffuseAreaLight {
-        todo!()
+        DiffuseAreaLight {
+            id: config.id.clone(),
+            shape: config.shape.configure(),
+            radiance: Spectrum::configure(&config.spectrum),
+        }
     }
 }
 

@@ -10,6 +10,14 @@ pub struct ConstantTexture {
     value: Spectrum,
 }
 
+impl ConstantTexture {
+    pub fn configure(config: &ConstantTextureConfig) -> ConstantTexture {
+        ConstantTexture {
+            value: Spectrum::configure(&config.spectrum),
+        }
+    }
+}
+
 impl Texture for ConstantTexture {
     fn evaluate(&self) -> Spectrum {
         self.value
@@ -20,5 +28,18 @@ impl Texture for ConstantTexture {
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
 pub enum TextureConfig {
-    Constant { spectrum: SpectrumConfig },
+    Constant(ConstantTextureConfig),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ConstantTextureConfig {
+    spectrum: SpectrumConfig,
+}
+
+impl TextureConfig {
+    pub fn configure(&self) -> Box<dyn Texture> {
+        match self {
+            TextureConfig::Constant(c) => Box::new(ConstantTexture::configure(&c)),
+        }
+    }
 }

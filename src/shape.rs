@@ -3,8 +3,7 @@ use std::f64::consts::PI;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    geometry::{self, Geometry},
-    interaction::{Interaction, ObjectInteraction, Orientation},
+    geometry::Geometry,
     ray::Ray,
     sampler::Sampler,
     vector::{Point, PointConfig, Vector},
@@ -12,7 +11,7 @@ use crate::{
 
 pub trait Shape {
     fn area(&self) -> f64;
-    fn sample_intersection(&self, sampler: &dyn Sampler) -> Geometry;
+    fn sample_intersection(&self, sampler: &mut dyn Sampler) -> Geometry;
     fn intersect(&self, ray: Ray) -> Option<Geometry>;
 }
 
@@ -21,12 +20,21 @@ pub struct Sphere {
     radius: f64,
 }
 
+impl Sphere {
+    pub fn configure(config: &SphereConfig) -> Sphere {
+        Sphere {
+            center: Point::configure(&config.center),
+            radius: config.radius,
+        }
+    }
+}
+
 impl Shape for Sphere {
     fn area(&self) -> f64 {
         4.0 * PI * self.radius
     }
 
-    fn sample_intersection(&self, sampler: &dyn Sampler) -> Geometry {
+    fn sample_intersection(&self, sampler: &mut dyn Sampler) -> Geometry {
         todo!()
     }
 
@@ -67,6 +75,16 @@ pub struct Parallelogram {
     b: Vector,
 }
 
+impl Parallelogram {
+    pub fn configure(config: &ParallelogramConfig) -> Parallelogram {
+        Parallelogram {
+            origin: Point::configure(&config.origin),
+            a: Vector::configure(&config.a),
+            b: Vector::configure(&config.b),
+        }
+    }
+}
+
 impl Shape for Parallelogram {
     fn area(&self) -> f64 {
         let left_length = self.a.len();
@@ -75,8 +93,16 @@ impl Shape for Parallelogram {
         area
     }
 
-    fn sample_intersection(&self, sampler: &dyn Sampler) -> Geometry {
-        todo!()
+    fn sample_intersection(&self, sampler: &mut dyn Sampler) -> Geometry {
+        let a = sampler.sample(0.0..1.0);
+        let b = sampler.sample(0.0..1.0);
+        let point = self.a * a + self.b * b;
+        let normal = self.a.cross(self.b);
+        Geometry {
+            point,
+            normal,
+            direction: normal,
+        }
     }
 
     fn intersect(&self, ray: Ray) -> Option<Geometry> {
@@ -146,4 +172,13 @@ pub struct ParallelogramConfig {
     origin: PointConfig,
     a: PointConfig,
     b: PointConfig,
+}
+
+impl ShapeConfig {
+    pub fn configure(&self) -> Box<dyn Shape> {
+        match self {
+            ShapeConfig::Parallelogram(c) => Box::new(Parallelogram::configure(c)),
+            ShapeConfig::Sphere(c) => Box::new(Sphere::configure(c)),
+        }
+    }
 }

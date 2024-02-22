@@ -14,11 +14,11 @@ pub trait Camera {
     fn probability(&self, point: Point, direction: Vector) -> f64;
     fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction;
     fn intersect(&self, ray: Ray) -> Option<Interaction>;
-    fn id(&self) -> u64;
+    fn id(&self) -> &String;
 }
 
 pub struct PinholeCamera {
-    id: u64,
+    id: String,
     u: Vector,
     v: Vector,
     w: Vector,
@@ -67,8 +67,8 @@ impl Camera for PinholeCamera {
         None
     }
 
-    fn id(&self) -> u64 {
-        self.id
+    fn id(&self) -> &String {
+        &self.id
     }
 }
 
