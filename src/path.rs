@@ -3,7 +3,6 @@ use crate::{
     geometry::Geometry,
     interaction::{Interaction, ObjectInteraction, Orientation},
     light::Light,
-    object::Object,
     ray::Ray,
     sampler::Sampler,
     scene::Scene,
@@ -34,14 +33,12 @@ pub struct CameraVertex<'a> {
 
 pub struct LightVertex<'a> {
     light: &'a (dyn Light + 'a),
-    point: Point,
     wo: Vector,
     normal: Vector,
     direction_to_area: f64,
 }
 
 pub struct ObjectVertex<'a> {
-    object: &'a (dyn Object + 'a),
     interaction: ObjectInteraction<'a>,
     wo: Vector,
     wi: Vector,
@@ -351,7 +348,6 @@ impl<'a> Path<'a> {
                     Orientation::Camera => {
                         let light_vertex = LightVertex {
                             light: light_interaction.light,
-                            point: light_interaction.geometry.point,
                             wo: light_interaction.geometry.direction * -1.0,
                             normal: light_interaction.geometry.normal,
                             direction_to_area: 1.0,
@@ -362,7 +358,6 @@ impl<'a> Path<'a> {
                     Orientation::Light => {
                         let light_vertex = LightVertex {
                             light: light_interaction.light,
-                            point: light_interaction.geometry.point,
                             wo: light_interaction.geometry.direction,
                             normal: light_interaction.geometry.normal,
                             direction_to_area: util::direction_to_area(
@@ -379,7 +374,6 @@ impl<'a> Path<'a> {
                         let wi = next_geometry?.point - object_interaction.geometry.point;
 
                         let object_vertex = ObjectVertex {
-                            object: object_interaction.object,
                             interaction: object_interaction,
                             wo: current_geometry.direction * -1.0,
                             wi,
@@ -396,7 +390,6 @@ impl<'a> Path<'a> {
                     Orientation::Light => {
                         let wo = previous_geometry?.point - object_interaction.geometry.point;
                         let object_vertex = ObjectVertex {
-                            object: object_interaction.object,
                             interaction: object_interaction,
                             wo,
                             wi: current_geometry.direction * -1.0,
