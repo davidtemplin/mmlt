@@ -2,7 +2,7 @@ use rand::{distributions::Distribution, thread_rng, Rng};
 
 use crate::{
     image::Image,
-    markov_chain::{MarkovChain, MutationType},
+    mmlt_sampler::{MmltSampler, MutationType},
     path::{Contribution, Path},
     pdf::Pdf,
     scene::Scene,
@@ -36,8 +36,8 @@ impl Integrator for MmltIntegrator {
 
         for k in 1..self.max_path_lenth {
             for _ in 1..self.initial_sample_count {
-                let mut chain = MarkovChain::new(3); // TODO: needs to be consistent with Path; maybe Path::chain() factory method?
-                if let Some(path) = Path::generate(scene, &mut chain, k) {
+                let mut sampler = Path::sampler();
+                if let Some(path) = Path::generate(scene, &mut sampler, k) {
                     let contribution = path.contribution();
                     b[k] = b[k] + contribution.scalar;
                 }
@@ -46,14 +46,14 @@ impl Integrator for MmltIntegrator {
 
         let pdf = Pdf::new(&b);
 
-        let mut chains: Vec<MarkovChain> = Vec::new();
+        let mut samplers: Vec<MmltSampler> = Vec::new();
         let mut contributions: Vec<Contribution> = Vec::new();
 
         for k in 1..self.max_path_lenth {
-            let mut chain = MarkovChain::new(3);
-            if let Some(path) = Path::generate(scene, &mut chain, k) {
+            let mut sampler = MmltSampler::new(3);
+            if let Some(path) = Path::generate(scene, &mut sampler, k) {
                 let contribution = path.contribution();
-                chains[k] = chain;
+                samplers[k] = sampler;
                 contributions[k] = contribution;
             }
         }
@@ -69,10 +69,10 @@ impl Integrator for MmltIntegrator {
 
             let k = pdf.sample(&mut rng);
 
-            let chain = &mut chains[k];
-            let mutation_type = chain.mutate();
+            let sampler = &mut samplers[k];
+            let mutation_type = sampler.mutate();
 
-            if let Some(path) = Path::generate(scene, chain, k) {
+            if let Some(path) = Path::generate(scene, sampler, k) {
                 let proposal_contribution = path.contribution();
                 let current_contribution = contributions[k];
 
@@ -84,22 +84,22 @@ impl Integrator for MmltIntegrator {
                         MutationType::SmallStep => 0.0,
                     };
                     let weight = (f64::from(k as i32) + 2.0) / pdf.value(k) * (a + step_factor)
-                        / (proposal_contribution.scalar / b[k] + chain.large_step_probability);
+                        / (proposal_contribution.scalar / b[k] + sampler.large_step_probability);
                     let spectrum = proposal_contribution.spectrum * weight;
                     image.contribute(spectrum, proposal_contribution.pixel_coordinates);
                 }
 
                 if current_contribution.scalar > 0.0 {
                     let weight = (k as f64 + 2.0) / pdf.value(k) * (1.0 - a)
-                        / (current_contribution.scalar / b[k] + chain.large_step_probability);
+                        / (current_contribution.scalar / b[k] + sampler.large_step_probability);
                     let spectrum = current_contribution.spectrum * weight;
                     image.contribute(spectrum, current_contribution.pixel_coordinates);
                 }
 
                 if rng.gen_range(0.0..1.0) <= a {
-                    chain.accept();
+                    sampler.accept();
                 } else {
-                    chain.reject();
+                    sampler.reject();
                 }
             }
         }

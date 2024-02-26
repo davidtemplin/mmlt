@@ -4,7 +4,7 @@ use rand::{thread_rng, Rng};
 
 use crate::{sampler::Sampler, util};
 
-pub struct MarkovChain {
+pub struct MmltSampler {
     pub large_step_probability: f64,
     sigma: f64,
     stream_count: usize,
@@ -51,9 +51,9 @@ pub enum MutationType {
     SmallStep,
 }
 
-impl MarkovChain {
-    pub fn new(stream_count: usize) -> MarkovChain {
-        MarkovChain {
+impl MmltSampler {
+    pub fn new(stream_count: usize) -> MmltSampler {
+        MmltSampler {
             large_step_probability: 0.3,
             sigma: 0.01,
             stream_count,
@@ -93,7 +93,7 @@ impl MarkovChain {
     }
 }
 
-impl Sampler for MarkovChain {
+impl Sampler for MmltSampler {
     fn start_iteration(&mut self) {
         self.iteration = self.iteration + 1;
     }

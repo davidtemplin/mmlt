@@ -4,6 +4,7 @@ use crate::{
     interaction::{
         CameraInteraction, Interaction, LightInteraction, ObjectInteraction, Orientation,
     },
+    mmlt_sampler::MmltSampler,
     ray::Ray,
     sampler::Sampler,
     scene::Scene,
@@ -153,6 +154,10 @@ const LIGHT_STREAM: usize = 1;
 const CAMERA_STREAM: usize = 2;
 
 impl<'a> Path<'a> {
+    pub fn sampler() -> MmltSampler {
+        MmltSampler::new(3)
+    }
+
     pub fn generate(
         scene: &'a Scene,
         sampler: &mut impl Sampler,
