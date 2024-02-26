@@ -1,18 +1,14 @@
 use std::cell::OnceCell;
 
 use crate::{
-    bsdf::Bsdf, camera::Camera, geometry::Geometry, light::Light, object::Object, ray::Ray,
-    sampler::Sampler, spectrum::Spectrum, vector::Vector,
+    bsdf::Bsdf, camera::Camera, geometry::Geometry, image::PixelCoordinates, light::Light,
+    object::Object, ray::Ray, sampler::Sampler, spectrum::Spectrum, vector::Vector,
 };
-
-pub enum Orientation {
-    Camera,
-    Light,
-}
 
 pub struct CameraInteraction<'a> {
     pub camera: &'a (dyn Camera + 'a),
     pub geometry: Geometry,
+    pub pixel_coordinates: PixelCoordinates,
 }
 
 pub struct LightInteraction<'a> {

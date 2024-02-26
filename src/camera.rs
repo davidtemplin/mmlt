@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     geometry::Geometry,
+    image::PixelCoordinates,
     interaction::{CameraInteraction, Interaction},
     ray::Ray,
     sampler::Sampler,
@@ -49,12 +50,13 @@ impl Camera for PinholeCamera {
     }
 
     fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction {
-        let width = self.pixel_width / 2.0;
-        let height = self.pixel_height / 2.0;
-        let u = self.u * sampler.sample(-width..width);
-        let v = self.v * sampler.sample(-height..height);
+        let x = sampler.sample(0.0..self.pixel_width);
+        let y = sampler.sample(0.0..self.pixel_height);
+        let u = self.u * (x - self.pixel_width);
+        let v = self.v * (y - self.pixel_height);
         let w = self.w * self.distance;
         let direction = (u + v + w).norm();
+        let pixel_coordinates = PixelCoordinates::new(x as usize, y as usize);
         let camera_interaction = CameraInteraction {
             camera: self,
             geometry: Geometry {
@@ -62,6 +64,7 @@ impl Camera for PinholeCamera {
                 direction,
                 normal: self.w,
             },
+            pixel_coordinates,
         };
         Interaction::Camera(camera_interaction)
     }

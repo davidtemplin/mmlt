@@ -1,9 +1,7 @@
 use crate::{
     geometry::Geometry,
     image::PixelCoordinates,
-    interaction::{
-        CameraInteraction, Interaction, LightInteraction, ObjectInteraction, Orientation,
-    },
+    interaction::{CameraInteraction, Interaction, LightInteraction, ObjectInteraction},
     mmlt_sampler::MmltSampler,
     ray::Ray,
     sampler::Sampler,
@@ -112,17 +110,19 @@ pub struct Technique {
 
 impl Technique {
     pub fn sample(path_length: usize, sampler: &mut impl Sampler) -> Technique {
-        let r = sampler.sample(0.0..path_length as f64);
-        let camera = (r * path_length as f64) as usize;
+        let length = path_length as f64;
+        let end = length + 1.0;
+        let r = sampler.sample(0.0..end);
+        let camera = (r * end).floor() as usize;
         let light = path_length - camera;
         Technique { camera, light }
     }
 
-    pub fn orientation(&self, n: usize) -> Orientation {
+    pub fn path_type(&self, n: usize) -> PathType {
         if n < self.camera {
-            Orientation::Camera
+            PathType::Camera
         } else {
-            Orientation::Light
+            PathType::Light
         }
     }
 }
@@ -327,46 +327,51 @@ impl<'a> Path<'a> {
 
         let mut i: usize = 0;
 
+        let mut pixel_coordinates: Option<PixelCoordinates> = None;
+
         while interactions.len() > 0 {
             let interaction = interactions.remove(0); // TODO: use VecDeque
             let current_geometry = interaction.geometry();
             let next_geometry = interactions.get(0).map(Interaction::geometry);
             match interaction {
-                Interaction::Camera(camera_interaction) => match technique.orientation(i) {
-                    Orientation::Camera => {
-                        let direction_to_area = util::direction_to_area(
-                            camera_interaction.geometry.direction,
-                            next_geometry?.normal,
-                        );
-                        let geometry_term = util::geometry_term(
-                            camera_interaction.geometry.direction,
-                            camera_interaction.geometry.normal,
-                            next_geometry?.normal,
-                        );
-                        let wi = camera_interaction.geometry.direction;
-                        let camera_vertex = CameraVertex {
-                            interaction: camera_interaction,
-                            wi,
-                            direction_to_area,
-                            geometry_term,
-                        };
+                Interaction::Camera(camera_interaction) => {
+                    pixel_coordinates.replace(camera_interaction.pixel_coordinates);
+                    match technique.path_type(i) {
+                        PathType::Camera => {
+                            let direction_to_area = util::direction_to_area(
+                                camera_interaction.geometry.direction,
+                                next_geometry?.normal,
+                            );
+                            let geometry_term = util::geometry_term(
+                                camera_interaction.geometry.direction,
+                                camera_interaction.geometry.normal,
+                                next_geometry?.normal,
+                            );
+                            let wi = camera_interaction.geometry.direction;
+                            let camera_vertex = CameraVertex {
+                                interaction: camera_interaction,
+                                wi,
+                                direction_to_area,
+                                geometry_term,
+                            };
 
-                        vertices.push(Vertex::Camera(camera_vertex));
-                    }
-                    Orientation::Light => {
-                        let wi = camera_interaction.geometry.direction;
-                        let camera_vertex = CameraVertex {
-                            interaction: camera_interaction,
-                            wi,
-                            direction_to_area: 1.0,
-                            geometry_term: 1.0,
-                        };
+                            vertices.push(Vertex::Camera(camera_vertex));
+                        }
+                        PathType::Light => {
+                            let wi = camera_interaction.geometry.direction;
+                            let camera_vertex = CameraVertex {
+                                interaction: camera_interaction,
+                                wi,
+                                direction_to_area: 1.0,
+                                geometry_term: 1.0,
+                            };
 
-                        vertices.push(Vertex::Camera(camera_vertex));
+                            vertices.push(Vertex::Camera(camera_vertex));
+                        }
                     }
-                },
-                Interaction::Light(light_interaction) => match technique.orientation(i) {
-                    Orientation::Camera => {
+                }
+                Interaction::Light(light_interaction) => match technique.path_type(i) {
+                    PathType::Camera => {
                         let wo = light_interaction.geometry.direction * -1.0;
                         let light_vertex = LightVertex {
                             interaction: light_interaction,
@@ -376,7 +381,7 @@ impl<'a> Path<'a> {
 
                         vertices.push(Vertex::Light(light_vertex));
                     }
-                    Orientation::Light => {
+                    PathType::Light => {
                         let direction_to_area = util::direction_to_area(
                             light_interaction.geometry.direction,
                             previous_geometry?.normal,
@@ -391,8 +396,8 @@ impl<'a> Path<'a> {
                         vertices.push(Vertex::Light(light_vertex));
                     }
                 },
-                Interaction::Object(object_interaction) => match technique.orientation(i) {
-                    Orientation::Camera => {
+                Interaction::Object(object_interaction) => match technique.path_type(i) {
+                    PathType::Camera => {
                         let wi = next_geometry?.point - object_interaction.geometry.point;
 
                         let object_vertex = ObjectVertex {
@@ -409,7 +414,7 @@ impl<'a> Path<'a> {
 
                         vertices.push(Vertex::Object(object_vertex));
                     }
-                    Orientation::Light => {
+                    PathType::Light => {
                         let wo = previous_geometry?.point - object_interaction.geometry.point;
                         let object_vertex = ObjectVertex {
                             interaction: object_interaction,
@@ -433,11 +438,10 @@ impl<'a> Path<'a> {
             i = i + 1;
         }
 
-        // TODO: compute this!
         let path = Path {
             vertices,
             technique,
-            pixel_coordinates: PixelCoordinates { x: 0, y: 0 },
+            pixel_coordinates: pixel_coordinates?,
         };
 
         Some(path)

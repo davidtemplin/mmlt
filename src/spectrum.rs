@@ -4,7 +4,11 @@ use serde::{Deserialize, Serialize};
 
 pub type Spectrum = RgbSpectrum;
 
-const LUMINANCE_WEIGHT: [f64; 3] = [0.212671, 0.715160, 0.072169];
+const LUMINANCE_WEIGHT: RgbSpectrum = RgbSpectrum {
+    r: 0.212671,
+    g: 0.715160,
+    b: 0.072169,
+};
 
 #[derive(Copy, Clone)]
 pub struct RgbSpectrum {
@@ -38,10 +42,12 @@ impl RgbSpectrum {
         }
     }
 
+    pub fn dot(&self, rhs: RgbSpectrum) -> f64 {
+        self.r * rhs.r + self.g * rhs.g + self.b * rhs.b
+    }
+
     pub fn luminance(&self) -> f64 {
-        return LUMINANCE_WEIGHT[0] * self.r
-            + LUMINANCE_WEIGHT[1] * self.g
-            + LUMINANCE_WEIGHT[2] * self.b;
+        self.dot(LUMINANCE_WEIGHT)
     }
 
     pub fn to_rgb(&self) -> &RgbSpectrum {

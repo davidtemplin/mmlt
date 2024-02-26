@@ -13,6 +13,12 @@ pub struct PixelCoordinates {
     pub y: usize,
 }
 
+impl PixelCoordinates {
+    pub fn new(x: usize, y: usize) -> PixelCoordinates {
+        PixelCoordinates { x, y }
+    }
+}
+
 pub struct Image {
     pixels: Vec<Spectrum>,
     width: usize,
