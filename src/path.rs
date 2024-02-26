@@ -494,12 +494,12 @@ impl<'a> Path<'a> {
         let (_, sum1) = camera_subpath
             .iter()
             .map(|v| v.weight(Direction::Forward))
-            .fold((0.0, 1.0), fold);
+            .fold((1.0, 0.0), fold);
         let (_, sum2) = light_subpath
             .iter()
             .rev()
             .map(|v| v.weight(Direction::Reverse))
-            .fold((0.0, 1.0), fold);
+            .fold((1.0, 0.0), fold);
         1.0 / (1.0 + sum1 + sum2)
     }
 }
