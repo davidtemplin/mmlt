@@ -15,7 +15,6 @@ mod integrator;
 mod interaction;
 mod light;
 mod material;
-mod mmlt_sampler;
 mod object;
 mod path;
 mod pdf;

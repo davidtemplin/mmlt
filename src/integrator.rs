@@ -2,9 +2,9 @@ use rand::{distributions::Distribution, thread_rng, Rng};
 
 use crate::{
     image::Image,
-    mmlt_sampler::{MmltSampler, MutationType},
     path::{Contribution, Path},
     pdf::Pdf,
+    sampler::{MmltSampler, MutationType},
     scene::Scene,
 };
 
