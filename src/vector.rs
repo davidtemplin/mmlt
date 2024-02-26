@@ -114,7 +114,6 @@ mod tests {
     fn test_dot() {
         let v1 = Vector::new(1.0, 2.0, 3.0);
         let v2 = Vector::new(2.0, 3.0, 4.0);
-
         assert_eq!(v1.dot(v2), 20.0);
     }
 }

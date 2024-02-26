@@ -12,6 +12,7 @@ use crate::{
 
 pub trait Light {
     fn radiance(&self, direction: Vector, normal: Vector) -> Spectrum;
+    fn sampling_probability(&self) -> f64;
     fn probability(&self, direction: Vector) -> Option<f64>;
     fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction;
     fn intersect(&self, ray: Ray) -> Option<Interaction>;
@@ -22,6 +23,7 @@ pub struct DiffuseAreaLight {
     id: String,
     shape: Box<dyn Shape>,
     radiance: Spectrum,
+    light_count: usize,
 }
 
 impl Light for DiffuseAreaLight {
@@ -31,6 +33,10 @@ impl Light for DiffuseAreaLight {
         } else {
             Spectrum::black()
         }
+    }
+
+    fn sampling_probability(&self) -> f64 {
+        1.0 / (self.light_count as f64)
     }
 
     fn probability(&self, _direction: Vector) -> Option<f64> {
@@ -47,6 +53,7 @@ impl Light for DiffuseAreaLight {
                 direction: geometry.direction,
                 normal: geometry.normal,
             },
+            light_count: self.light_count,
         };
         Interaction::Light(light_interaction)
     }
@@ -60,6 +67,7 @@ impl Light for DiffuseAreaLight {
                 direction: geometry.direction,
                 normal: geometry.normal,
             },
+            light_count: self.light_count,
         };
         let interaction = Interaction::Light(light_interaction);
         Some(interaction)
@@ -71,11 +79,12 @@ impl Light for DiffuseAreaLight {
 }
 
 impl DiffuseAreaLight {
-    pub fn configure(config: &DiffuseAreaLightConfig) -> DiffuseAreaLight {
+    pub fn configure(config: &DiffuseAreaLightConfig, light_count: usize) -> DiffuseAreaLight {
         DiffuseAreaLight {
             id: config.id.clone(),
             shape: config.shape.configure(),
             radiance: Spectrum::configure(&config.spectrum),
+            light_count,
         }
     }
 }
@@ -88,9 +97,11 @@ pub enum LightConfig {
 }
 
 impl LightConfig {
-    pub fn configure(&self) -> Box<dyn Light> {
+    pub fn configure(&self, light_count: usize) -> Box<dyn Light> {
         match self {
-            LightConfig::DiffuseArea(config) => Box::new(DiffuseAreaLight::configure(config)),
+            LightConfig::DiffuseArea(config) => {
+                Box::new(DiffuseAreaLight::configure(config, light_count))
+            }
         }
     }
 }

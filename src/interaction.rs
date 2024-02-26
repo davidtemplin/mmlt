@@ -14,6 +14,7 @@ pub struct CameraInteraction<'a> {
 pub struct LightInteraction<'a> {
     pub light: &'a (dyn Light + 'a),
     pub geometry: Geometry,
+    pub light_count: usize,
 }
 
 pub struct ObjectInteraction<'a> {

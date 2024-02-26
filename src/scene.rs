@@ -25,8 +25,12 @@ pub struct Scene {
 
 impl SceneConfig {
     pub fn configure(self: SceneConfig) -> Scene {
-        let camera = Box::new(self.camera.configure());
-        let lights = self.lights.iter().map(|c| c.configure()).collect();
+        let camera = Box::new(self.camera.configure(self.image.width, self.image.height));
+        let lights = self
+            .lights
+            .iter()
+            .map(|c| c.configure(self.lights.len()))
+            .collect();
         let objects = self.objects.iter().map(|c| c.configure()).collect();
         Scene {
             camera,

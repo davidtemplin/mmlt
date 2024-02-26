@@ -74,8 +74,11 @@ impl<'a> Vertex<'a> {
                     * v.direction_to_area
             }
             // TODO: need to let camera determine PDF, store it; could take more than 1 sample
-            Vertex::Light(v) => v.interaction.light.probability(v.wo)? * v.direction_to_area,
-            // TODO: need to include PDF of sampling light from scene
+            Vertex::Light(v) => {
+                v.interaction.light.sampling_probability()
+                    * v.interaction.light.probability(v.wo)?
+                    * v.direction_to_area
+            }
             Vertex::Object(v) => match path_type {
                 PathType::Camera => v.interaction.probability(v.wo, v.wi)? * v.direction_to_area,
                 PathType::Light => v.interaction.probability(v.wi, v.wo)? * v.direction_to_area,

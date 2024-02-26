@@ -79,15 +79,22 @@ impl Camera for PinholeCamera {
 }
 
 impl PinholeCamera {
-    pub fn configure(config: PinholeCameraConfig) -> PinholeCamera {
+    pub fn configure(
+        config: PinholeCameraConfig,
+        image_width: usize,
+        image_height: usize,
+    ) -> PinholeCamera {
         let origin = Vector::configure(&config.origin);
-        let pixel_height = 512.0; // TODO!!!! Also don't assume degrees
-        let distance =
-            pixel_height / (2.0 * (config.field_of_view.value / 2.0) * (PI / 180.0).tan());
+        let pixel_width = image_width as f64;
+        let pixel_height = image_height as f64;
+        let fov = match config.field_of_view.unit {
+            AngleUnitConfig::Degrees => config.field_of_view.value * (PI / 180.0),
+            AngleUnitConfig::Radians => config.field_of_view.value,
+        };
+        let distance = pixel_height / (2.0 * (fov / 2.0).tan());
         let w = Vector::configure(&config.direction).norm();
         let u = w.cross(Vector::new(0.0, 1.0, 0.0)).norm();
         let v = u.cross(w);
-
         PinholeCamera {
             id: String::from("camera"),
             u,
@@ -95,8 +102,8 @@ impl PinholeCamera {
             w,
             origin,
             distance,
-            pixel_width: 512.0,
-            pixel_height: 512.0,
+            pixel_width,
+            pixel_height,
         }
     }
 }
@@ -109,9 +116,11 @@ pub enum CameraConfig {
 }
 
 impl CameraConfig {
-    pub fn configure(self) -> impl Camera {
+    pub fn configure(self, image_width: usize, image_height: usize) -> impl Camera {
         match self {
-            CameraConfig::Pinhole(config) => PinholeCamera::configure(config),
+            CameraConfig::Pinhole(config) => {
+                PinholeCamera::configure(config, image_width, image_height)
+            }
         }
     }
 }
