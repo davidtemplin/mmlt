@@ -13,7 +13,7 @@ use crate::{
 
 pub trait Camera {
     fn importance(&self, point: Point, direction: Vector) -> Spectrum;
-    fn probability(&self, point: Point, direction: Vector) -> f64;
+    fn probability(&self, point: Point, direction: Vector) -> Option<f64>;
     fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction;
     fn intersect(&self, ray: Ray) -> Option<Interaction>;
     fn id(&self) -> &String;
@@ -39,12 +39,13 @@ impl Camera for PinholeCamera {
         Spectrum::fill(1.0 / (a * c4))
     }
 
-    fn probability(&self, _point: Point, direction: Vector) -> f64 {
+    fn probability(&self, _point: Point, direction: Vector) -> Option<f64> {
         let c = direction.norm().dot(self.w);
         let d = self.distance / c;
         let d2 = d * d;
         let a = self.pixel_width * self.pixel_height;
-        d2 / (a * c)
+        let p = d2 / (a * c);
+        Some(p)
     }
 
     fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction {

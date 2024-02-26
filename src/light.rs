@@ -12,7 +12,7 @@ use crate::{
 
 pub trait Light {
     fn radiance(&self, direction: Vector, normal: Vector) -> Spectrum;
-    fn probability(&self, direction: Vector) -> f64;
+    fn probability(&self, direction: Vector) -> Option<f64>;
     fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction;
     fn intersect(&self, ray: Ray) -> Option<Interaction>;
     fn id(&self) -> &String;
@@ -33,8 +33,9 @@ impl Light for DiffuseAreaLight {
         }
     }
 
-    fn probability(&self, _direction: Vector) -> f64 {
-        1.0 / self.shape.area()
+    fn probability(&self, _direction: Vector) -> Option<f64> {
+        let p = 1.0 / self.shape.area();
+        Some(p)
     }
 
     fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction {

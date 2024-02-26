@@ -8,7 +8,7 @@ pub struct Bsdf {
 
 pub trait Bxdf {
     fn evaluate(&self, wo: Vector, wi: Vector) -> Spectrum;
-    fn probability(&self, wo: Vector, wi: Vector) -> f64;
+    fn probability(&self, wo: Vector, wi: Vector) -> Option<f64>;
     fn sample_direction(&self, sampler: &mut dyn Sampler) -> Vector;
 }
 
@@ -26,12 +26,14 @@ impl Bsdf {
         self.bxdfs[i].sample_direction(sampler)
     }
 
-    pub fn probability(&self, wo: Vector, wi: Vector) -> f64 {
-        self.bxdfs
+    pub fn probability(&self, wo: Vector, wi: Vector) -> Option<f64> {
+        let p = self
+            .bxdfs
             .iter()
-            .map(|bxdf| bxdf.probability(wo, wi))
+            .map(|bxdf| bxdf.probability(wo, wi).unwrap_or(0.0))
             .fold(0.0, |a, b| a + b)
-            / (self.bxdfs.len() as f64)
+            / (self.bxdfs.len() as f64);
+        Some(p)
     }
 }
 
@@ -50,12 +52,13 @@ impl Bxdf for DiffuseBrdf {
         self.scale * (1.0 / PI)
     }
 
-    fn probability(&self, wo: Vector, wi: Vector) -> f64 {
-        if !util::same_hemisphere(wo, wi) {
+    fn probability(&self, wo: Vector, wi: Vector) -> Option<f64> {
+        let p = if !util::same_hemisphere(wo, wi) {
             util::abs_cos_theta(wi) * (1.0 / PI)
         } else {
             0.0
-        }
+        };
+        Some(p)
     }
 
     fn sample_direction(&self, sampler: &mut dyn Sampler) -> Vector {

@@ -68,20 +68,23 @@ impl<'a> Vertex<'a> {
         }
     }
 
-    fn probability(&self, path_type: PathType) -> f64 {
-        match self {
+    fn probability(&self, path_type: PathType) -> Option<f64> {
+        let p = match self {
             Vertex::Camera(v) => {
                 v.interaction
                     .camera
-                    .probability(v.interaction.geometry.point, v.wi)
+                    .probability(v.interaction.geometry.point, v.wi)?
                     * v.direction_to_area
-            } // TODO: need to let camera determine PDF, store it; could take more than 1 sample
-            Vertex::Light(v) => v.interaction.light.probability(v.wo) * v.direction_to_area, // TODO: need to include PDF of sampling light from scene
+            }
+            // TODO: need to let camera determine PDF, store it; could take more than 1 sample
+            Vertex::Light(v) => v.interaction.light.probability(v.wo)? * v.direction_to_area,
+            // TODO: need to include PDF of sampling light from scene
             Vertex::Object(v) => match path_type {
-                PathType::Camera => v.interaction.probability(v.wo, v.wi) * v.direction_to_area,
-                PathType::Light => v.interaction.probability(v.wi, v.wo) * v.direction_to_area,
+                PathType::Camera => v.interaction.probability(v.wo, v.wi)? * v.direction_to_area,
+                PathType::Light => v.interaction.probability(v.wi, v.wo)? * v.direction_to_area,
             },
-        }
+        };
+        Some(p)
     }
 
     fn weight(&self, direction: Direction) -> Option<f64> {
@@ -90,8 +93,8 @@ impl<'a> Vertex<'a> {
             Vertex::Camera(_) => Some(1.0),
             Vertex::Light(_) => Some(1.0),
             Vertex::Object(_) => {
-                let rev = self.probability(PathType::Light);
-                let fwd = self.probability(PathType::Camera);
+                let rev = self.probability(PathType::Light)?;
+                let fwd = self.probability(PathType::Camera)?;
                 match direction {
                     Direction::Forward => Some(rev / fwd),
                     Direction::Reverse => Some(fwd / rev),
@@ -460,13 +463,13 @@ impl<'a> Path<'a> {
         let camera_subpath = &self.vertices[0..self.technique.camera];
         let p1 = camera_subpath
             .iter()
-            .map(|v| v.probability(PathType::Camera))
+            .map(|v| v.probability(PathType::Camera).unwrap_or(1.0))
             .fold(1.0, |acc, p| acc * p);
         let light_subpath = &self.vertices[self.technique.light..];
         let p2 = light_subpath
             .iter()
             .rev()
-            .map(|v| v.probability(PathType::Light))
+            .map(|v| v.probability(PathType::Light).unwrap_or(1.0))
             .fold(1.0, |acc, p| acc * p);
         p1 * p2
     }
