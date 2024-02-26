@@ -1,14 +1,14 @@
 use crate::{
-    camera::Camera,
     geometry::Geometry,
-    interaction::{Interaction, ObjectInteraction, Orientation},
-    light::Light,
+    interaction::{
+        CameraInteraction, Interaction, LightInteraction, ObjectInteraction, Orientation,
+    },
     ray::Ray,
     sampler::Sampler,
     scene::Scene,
     spectrum::Spectrum,
     util,
-    vector::{Point, Vector},
+    vector::Vector,
 };
 
 pub struct Path<'a> {
@@ -24,17 +24,15 @@ pub enum PathType {
 }
 
 pub struct CameraVertex<'a> {
-    camera: &'a (dyn Camera + 'a),
-    point: Point,
+    interaction: CameraInteraction<'a>,
     wi: Vector,
     direction_to_area: f64,
     geometry_term: f64,
 }
 
 pub struct LightVertex<'a> {
-    light: &'a (dyn Light + 'a),
+    interaction: LightInteraction<'a>,
     wo: Vector,
-    normal: Vector,
     direction_to_area: f64,
 }
 
@@ -55,16 +53,29 @@ pub enum Vertex<'a> {
 impl<'a> Vertex<'a> {
     fn throughput(&self) -> Spectrum {
         match self {
-            Vertex::Camera(v) => v.camera.importance(v.point, v.wi) * v.geometry_term,
-            Vertex::Light(v) => v.light.radiance(v.wo, v.normal),
+            Vertex::Camera(v) => {
+                v.interaction
+                    .camera
+                    .importance(v.interaction.geometry.point, v.wi)
+                    * v.geometry_term
+            }
+            Vertex::Light(v) => v
+                .interaction
+                .light
+                .radiance(v.wo, v.interaction.geometry.normal),
             Vertex::Object(v) => v.interaction.reflectance(v.wo, v.wi) * v.geometry_term,
         }
     }
 
     fn probability(&self, path_type: PathType) -> f64 {
         match self {
-            Vertex::Camera(v) => v.camera.probability(v.point, v.wi) * v.direction_to_area, // TODO: need to let camera determine PDF, store it; could take more than 1 sample
-            Vertex::Light(v) => v.light.probability(v.wo) * v.direction_to_area, // TODO: need to include PDF of sampling light from scene
+            Vertex::Camera(v) => {
+                v.interaction
+                    .camera
+                    .probability(v.interaction.geometry.point, v.wi)
+                    * v.direction_to_area
+            } // TODO: need to let camera determine PDF, store it; could take more than 1 sample
+            Vertex::Light(v) => v.interaction.light.probability(v.wo) * v.direction_to_area, // TODO: need to include PDF of sampling light from scene
             Vertex::Object(v) => match path_type {
                 PathType::Camera => v.interaction.probability(v.wo, v.wi) * v.direction_to_area,
                 PathType::Light => v.interaction.probability(v.wi, v.wo) * v.direction_to_area,
@@ -315,28 +326,30 @@ impl<'a> Path<'a> {
             match interaction {
                 Interaction::Camera(camera_interaction) => match technique.orientation(i) {
                     Orientation::Camera => {
+                        let direction_to_area = util::direction_to_area(
+                            camera_interaction.geometry.direction,
+                            next_geometry?.normal,
+                        );
+                        let geometry_term = util::geometry_term(
+                            camera_interaction.geometry.direction,
+                            camera_interaction.geometry.normal,
+                            next_geometry?.normal,
+                        );
+                        let wi = camera_interaction.geometry.direction;
                         let camera_vertex = CameraVertex {
-                            camera: camera_interaction.camera,
-                            point: camera_interaction.geometry.point,
-                            wi: camera_interaction.geometry.direction,
-                            direction_to_area: util::direction_to_area(
-                                camera_interaction.geometry.direction,
-                                next_geometry?.normal,
-                            ),
-                            geometry_term: util::geometry_term(
-                                camera_interaction.geometry.direction,
-                                camera_interaction.geometry.normal,
-                                next_geometry?.normal,
-                            ),
+                            interaction: camera_interaction,
+                            wi,
+                            direction_to_area,
+                            geometry_term,
                         };
 
                         vertices.push(Vertex::Camera(camera_vertex));
                     }
                     Orientation::Light => {
+                        let wi = camera_interaction.geometry.direction;
                         let camera_vertex = CameraVertex {
-                            camera: camera_interaction.camera,
-                            point: camera_interaction.geometry.point,
-                            wi: camera_interaction.geometry.direction,
+                            interaction: camera_interaction,
+                            wi,
                             direction_to_area: 1.0,
                             geometry_term: 1.0,
                         };
@@ -346,24 +359,25 @@ impl<'a> Path<'a> {
                 },
                 Interaction::Light(light_interaction) => match technique.orientation(i) {
                     Orientation::Camera => {
+                        let wo = light_interaction.geometry.direction * -1.0;
                         let light_vertex = LightVertex {
-                            light: light_interaction.light,
-                            wo: light_interaction.geometry.direction * -1.0,
-                            normal: light_interaction.geometry.normal,
+                            interaction: light_interaction,
+                            wo,
                             direction_to_area: 1.0,
                         };
 
                         vertices.push(Vertex::Light(light_vertex));
                     }
                     Orientation::Light => {
+                        let direction_to_area = util::direction_to_area(
+                            light_interaction.geometry.direction,
+                            previous_geometry?.normal,
+                        );
+                        let wo = light_interaction.geometry.direction;
                         let light_vertex = LightVertex {
-                            light: light_interaction.light,
-                            wo: light_interaction.geometry.direction,
-                            normal: light_interaction.geometry.normal,
-                            direction_to_area: util::direction_to_area(
-                                light_interaction.geometry.direction,
-                                previous_geometry?.normal,
-                            ),
+                            interaction: light_interaction,
+                            wo,
+                            direction_to_area,
                         };
 
                         vertices.push(Vertex::Light(light_vertex));
