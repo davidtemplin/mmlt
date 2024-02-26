@@ -23,9 +23,9 @@ impl MatteMaterial {
 }
 
 impl Material for MatteMaterial {
-    fn compute_bsdf(&self, _geometry: Geometry) -> Bsdf {
+    fn compute_bsdf(&self, geometry: Geometry) -> Bsdf {
         Bsdf {
-            bxdfs: vec![Box::new(DiffuseBrdf::new(self.texture.evaluate()))],
+            bxdfs: vec![Box::new(DiffuseBrdf::new(self.texture.evaluate(geometry)))],
         }
     }
 }

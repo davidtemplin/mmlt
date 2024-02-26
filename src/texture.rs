@@ -1,9 +1,12 @@
-use crate::spectrum::{Spectrum, SpectrumConfig};
+use crate::{
+    geometry::Geometry,
+    spectrum::{Spectrum, SpectrumConfig},
+};
 
 use serde::{Deserialize, Serialize};
 
 pub trait Texture {
-    fn evaluate(&self) -> Spectrum;
+    fn evaluate(&self, geometry: Geometry) -> Spectrum;
 }
 
 pub struct ConstantTexture {
@@ -19,7 +22,7 @@ impl ConstantTexture {
 }
 
 impl Texture for ConstantTexture {
-    fn evaluate(&self) -> Spectrum {
+    fn evaluate(&self, _geometry: Geometry) -> Spectrum {
         self.value
     }
 }
