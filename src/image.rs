@@ -7,6 +7,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::spectrum::Spectrum;
 
+#[derive(Copy, Clone)]
+pub struct PixelCoordinates {
+    pub x: usize,
+    pub y: usize,
+}
+
 pub struct Image {
     pixels: Vec<Spectrum>,
     width: usize,
@@ -22,8 +28,8 @@ impl Image {
         }
     }
 
-    pub fn contribute(&mut self, spectrum: Spectrum, x: usize, y: usize) {
-        let i = y * self.height + x;
+    pub fn contribute(&mut self, spectrum: Spectrum, coordinates: PixelCoordinates) {
+        let i = coordinates.y * self.height + coordinates.x;
         self.pixels[i] = self.pixels[i] + spectrum;
     }
 

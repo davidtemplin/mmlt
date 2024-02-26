@@ -86,14 +86,14 @@ impl Integrator for MmltIntegrator {
                     let weight = (f64::from(k as i32) + 2.0) / pdf.value(k) * (a + step_factor)
                         / (proposal_contribution.scalar / b[k] + chain.large_step_probability);
                     let spectrum = proposal_contribution.spectrum * weight;
-                    image.contribute(spectrum, proposal_contribution.x, proposal_contribution.y);
+                    image.contribute(spectrum, proposal_contribution.pixel_coordinates);
                 }
 
                 if current_contribution.scalar > 0.0 {
                     let weight = (k as f64 + 2.0) / pdf.value(k) * (1.0 - a)
                         / (current_contribution.scalar / b[k] + chain.large_step_probability);
                     let spectrum = current_contribution.spectrum * weight;
-                    image.contribute(spectrum, current_contribution.x, current_contribution.y);
+                    image.contribute(spectrum, current_contribution.pixel_coordinates);
                 }
 
                 if rng.gen_range(0.0..1.0) <= a {

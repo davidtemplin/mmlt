@@ -1,5 +1,6 @@
 use crate::{
     geometry::Geometry,
+    image::PixelCoordinates,
     interaction::{
         CameraInteraction, Interaction, LightInteraction, ObjectInteraction, Orientation,
     },
@@ -14,8 +15,7 @@ use crate::{
 pub struct Path<'a> {
     vertices: Vec<Vertex<'a>>,
     technique: Technique,
-    x: usize,
-    y: usize,
+    pixel_coordinates: PixelCoordinates,
 }
 
 pub enum PathType {
@@ -132,8 +132,7 @@ enum Direction {
 pub struct Contribution {
     pub scalar: f64,
     pub spectrum: Spectrum,
-    pub x: usize,
-    pub y: usize,
+    pub pixel_coordinates: PixelCoordinates,
 }
 
 impl Contribution {
@@ -429,8 +428,7 @@ impl<'a> Path<'a> {
         let path = Path {
             vertices,
             technique,
-            x: 0,
-            y: 0,
+            pixel_coordinates: PixelCoordinates { x: 0, y: 0 },
         };
 
         Some(path)
@@ -441,8 +439,7 @@ impl<'a> Path<'a> {
         Contribution {
             scalar: c.luminance(),
             spectrum: c,
-            x: self.x,
-            y: self.y,
+            pixel_coordinates: self.pixel_coordinates,
         }
     }
 
