@@ -88,7 +88,6 @@ impl<'a> Vertex<'a> {
     }
 
     fn weight(&self, direction: Direction) -> Option<f64> {
-        // TODO: dirac distributions; make probability() return Option?
         match self {
             Vertex::Camera(_) => Some(1.0),
             Vertex::Light(_) => Some(1.0),
