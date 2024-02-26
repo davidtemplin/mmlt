@@ -73,7 +73,6 @@ impl<'a> Vertex<'a> {
                     .probability(v.interaction.geometry.point, v.wi)?
                     * v.direction_to_area
             }
-            // TODO: need to let camera determine PDF, store it; could take more than 1 sample
             Vertex::Light(v) => {
                 v.interaction.light.sampling_probability()
                     * v.interaction.light.probability(v.wo)?
@@ -206,8 +205,6 @@ impl<'a> Path<'a> {
         Path::compute(&mut interactions, technique)
     }
 
-    // TODO: sometimes we sample a point, sometimes a ray; this might require 1 or 2 random numbers; ensure consistency somehow
-    // TODO: ensure sampling consistency throughout code
     pub fn connect_full_light_path(
         scene: &'a Scene,
         sampler: &mut impl Sampler,
