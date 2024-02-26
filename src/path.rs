@@ -152,10 +152,11 @@ impl Contribution {
 const TECHNIQUE_STREAM: usize = 0;
 const LIGHT_STREAM: usize = 1;
 const CAMERA_STREAM: usize = 2;
+const STREAM_COUNT: usize = 3;
 
 impl<'a> Path<'a> {
     pub fn sampler() -> MmltSampler {
-        MmltSampler::new(3)
+        MmltSampler::new(STREAM_COUNT)
     }
 
     pub fn generate(

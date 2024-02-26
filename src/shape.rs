@@ -32,7 +32,7 @@ impl Sphere {
 
 impl Shape for Sphere {
     fn area(&self) -> f64 {
-        4.0 * PI * self.radius
+        4.0 * PI * self.radius * self.radius
     }
 
     fn sample_intersection(&self, sampler: &mut dyn Sampler) -> Geometry {
