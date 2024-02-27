@@ -21,8 +21,9 @@ impl Bsdf {
     }
 
     pub fn sample_direction(&self, wo: Vector, sampler: &mut dyn Sampler) -> Vector {
-        let r = sampler.sample(0.0..1.0);
-        let i = (r * self.bxdfs.len() as f64).floor() as usize;
+        let length = self.bxdfs.len() as f64;
+        let r = sampler.sample(0.0..length).floor();
+        let i = r as usize;
         self.bxdfs[i].sample_direction(wo, sampler)
     }
 
