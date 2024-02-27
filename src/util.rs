@@ -71,15 +71,23 @@ pub fn concentric_sample_disk(sampler: &mut dyn Sampler) -> (f64, f64) {
     (r * theta.cos(), r * theta.sin())
 }
 
-pub fn cosine_sample_hemisphere(nz: Vector, sampler: &mut dyn Sampler) -> Vector {
+pub fn cosine_sample_hemisphere(n: Vector, sampler: &mut dyn Sampler) -> Vector {
     // Sample a unit disk in R^2
     let (x, y) = concentric_sample_disk(sampler);
 
-    // Compute a basis vector orthogonal to the normal nz and coordinate system basis ey
+    // Compute an orthonormal basis relative to n as the "z" direction
+    let (nx, ny, nz) = orthonormal_basis(n);
+
+    // Compute the coordinates in this new orthonormal basis relative to the normal vector nz
+    let z = f64::max(0.0, 1.0 - x * x - y * y).sqrt();
+
+    nx * x + ny * y + nz * z
+}
+
+pub fn orthonormal_basis(n: Vector) -> (Vector, Vector, Vector) {
+    let nz = n.norm();
     let ey = Vector::new(0.0, 1.0, 0.0);
     let mut nx = nz.cross(ey).norm();
-
-    // Recompute nx if nz was parallel to ny; compute ny as orthogonal to nx
     let ny = if nx.is_zero() {
         let ex = Vector::new(1.0, 0.0, 0.0);
         let ny = ex.cross(nz).norm();
@@ -88,11 +96,7 @@ pub fn cosine_sample_hemisphere(nz: Vector, sampler: &mut dyn Sampler) -> Vector
     } else {
         nx.cross(nz).norm()
     };
-
-    // Compute the coordinates in this new orthonormal basis relative to the normal vector nz
-    let z = f64::max(0.0, 1.0 - x * x - y * y).sqrt();
-
-    nx * x + ny * y + nz * z
+    (nx, ny, nz)
 }
 
 pub fn same_hemisphere(n: Vector, v1: Vector, v2: Vector) -> bool {
