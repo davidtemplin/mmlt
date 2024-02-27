@@ -60,8 +60,8 @@ impl Add<RgbSpectrum> for RgbSpectrum {
     fn add(self, rhs: RgbSpectrum) -> Self::Output {
         RgbSpectrum {
             r: self.r + rhs.r,
-            g: self.g * rhs.g,
-            b: self.b * rhs.b,
+            g: self.g + rhs.g,
+            b: self.b + rhs.b,
         }
     }
 }

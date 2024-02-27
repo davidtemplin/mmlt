@@ -111,3 +111,11 @@ pub fn uniform_sample_sphere(sampler: &mut dyn Sampler) -> Vector {
     let phi = 2.0 * PI * u2;
     Vector::new(r * phi.cos(), r * phi.sin(), z)
 }
+
+pub fn equals(a: f64, b: f64, tolerance: f64) -> bool {
+    (a - b).abs() < tolerance
+}
+
+pub fn reflect(d: Vector, n: Vector) -> Vector {
+    d - (2.0 * d.dot(n) * n)
+}

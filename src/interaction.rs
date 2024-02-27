@@ -36,7 +36,8 @@ impl<'a> ObjectInteraction<'a> {
     }
 
     pub fn generate_ray(&self, sampler: &mut dyn Sampler) -> Ray {
-        let direction = self.get_bsdf().sample_direction(sampler);
+        let wo = self.geometry.direction * -1.0;
+        let direction = self.get_bsdf().sample_direction(wo, sampler).norm();
         Ray {
             origin: self.geometry.point,
             direction,
