@@ -1,6 +1,6 @@
 use std::f64::consts::PI;
 
-use crate::vector::Vector;
+use crate::{sampler::Sampler, vector::Vector};
 
 pub fn direction_to_area(direction: Vector, normal: Vector) -> f64 {
     let d2 = direction.dot(direction);
@@ -44,7 +44,10 @@ pub fn erf_inv(x: f64) -> f64 {
     }
 }
 
-pub fn concentric_sample_disk(u1: f64, u2: f64) -> (f64, f64) {
+pub fn concentric_sample_disk(sampler: &mut dyn Sampler) -> (f64, f64) {
+    let u1 = sampler.sample(0.0..1.0);
+    let u2 = sampler.sample(0.0..1.0);
+
     // Map uniform random numbers to $[-1,1]^2$
     let u_offset_x = 2.0 * u1 - 1.0;
     let u_offset_y = 2.0 * u2 - 1.0;
@@ -68,21 +71,41 @@ pub fn concentric_sample_disk(u1: f64, u2: f64) -> (f64, f64) {
     (r * theta.cos(), r * theta.sin())
 }
 
-pub fn cosine_sample_hemisphere(u1: f64, u2: f64) -> Vector {
-    let (x, y) = concentric_sample_disk(u1, u2);
+pub fn cosine_sample_hemisphere(nz: Vector, sampler: &mut dyn Sampler) -> Vector {
+    // Sample a unit disk in R^2
+    let (x, y) = concentric_sample_disk(sampler);
+
+    // Compute a basis vector orthogonal to the normal nz and coordinate system basis ey
+    let ey = Vector::new(0.0, 1.0, 0.0);
+    let mut nx = nz.cross(ey).norm();
+
+    // Recompute nx if nz was parallel to ny; compute ny as orthogonal to nx
+    let ny = if nx.is_zero() {
+        let ex = Vector::new(1.0, 0.0, 0.0);
+        let ny = ex.cross(nz).norm();
+        nx = nz.cross(ny).norm();
+        ny
+    } else {
+        nx.cross(nz).norm()
+    };
+
+    // Compute the coordinates in this new orthonormal basis relative to the normal vector nz
     let z = f64::max(0.0, 1.0 - x * x - y * y).sqrt();
-    Vector::new(x, y, z)
+
+    nx * x + ny * y + nz * z
 }
 
-pub fn same_hemisphere(w: Vector, wp: Vector) -> bool {
-    w.z * wp.z > 0.0
+pub fn same_hemisphere(n: Vector, v1: Vector, v2: Vector) -> bool {
+    v1.dot(n).is_sign_positive() == v2.dot(n).is_sign_positive()
 }
 
-pub fn abs_cos_theta(v: Vector) -> f64 {
-    v.z
+pub fn abs_cos_theta(n: Vector, v: Vector) -> f64 {
+    n.norm().dot(v.norm()).abs()
 }
 
-pub fn uniform_sample_sphere(u1: f64, u2: f64) -> Vector {
+pub fn uniform_sample_sphere(sampler: &mut dyn Sampler) -> Vector {
+    let u1 = sampler.sample(0.0..1.0);
+    let u2 = sampler.sample(0.0..1.0);
     let z = 1.0 - 2.0 * u1;
     let r = f64::max(0.0, 1.0 - z * z).sqrt();
     let phi = 2.0 * PI * u2;

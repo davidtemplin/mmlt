@@ -145,3 +145,40 @@ impl Sampler for MmltSampler {
         sample.value * (range.start - range.end) + range.start
     }
 }
+
+#[cfg(test)]
+pub mod test {
+    use super::Sampler;
+    use std::{collections::VecDeque, ops::Range};
+
+    pub struct MockSampler {
+        samples: VecDeque<f64>,
+    }
+
+    impl MockSampler {
+        pub fn new() -> MockSampler {
+            MockSampler {
+                samples: VecDeque::new(),
+            }
+        }
+
+        pub fn add(&mut self, sample: f64) {
+            self.samples.push_back(sample)
+        }
+    }
+
+    impl Sampler for MockSampler {
+        fn start_iteration(&mut self) {
+            // nothing
+        }
+
+        fn start_stream(&mut self, _index: usize) {
+            // nothing
+        }
+
+        fn sample(&mut self, range: Range<f64>) -> f64 {
+            let r = self.samples.pop_front().unwrap_or(0.0);
+            r * (range.end - range.start) + range.start
+        }
+    }
+}

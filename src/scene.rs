@@ -55,7 +55,6 @@ impl Scene {
         let file = File::open(path).map_err(|e: io::Error| e.to_string())?;
         let config: SceneConfig =
             serde_yaml::from_reader(file).map_err(|e: serde_yaml::Error| e.to_string())?;
-        println!("{}", format!("{config:#?}"));
         let scene = config.configure();
         Ok(scene)
     }

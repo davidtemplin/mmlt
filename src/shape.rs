@@ -36,9 +36,7 @@ impl Shape for Sphere {
     }
 
     fn sample_intersection(&self, sampler: &mut dyn Sampler) -> Geometry {
-        let u1 = sampler.sample(0.0..1.0);
-        let u2 = sampler.sample(0.0..1.0);
-        let point = self.center + util::uniform_sample_sphere(u1, u2) * self.radius;
+        let point = self.center + util::uniform_sample_sphere(sampler) * self.radius;
         Geometry {
             point,
             direction: point.norm(),

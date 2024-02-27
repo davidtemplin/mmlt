@@ -8,7 +8,7 @@ use serde::Serialize;
 
 pub type Point = Vector;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Vector {
     pub x: f64,
     pub y: f64,
@@ -33,7 +33,12 @@ impl Vector {
     }
 
     pub fn norm(&self) -> Vector {
-        *self / self.len()
+        let l = self.len();
+        if l == 0.0 {
+            *self
+        } else {
+            *self / self.len()
+        }
     }
 
     pub fn len(&self) -> f64 {
@@ -46,6 +51,10 @@ impl Vector {
             y: self.z * rhs.x - self.x * rhs.z,
             z: self.x * rhs.y - self.y * rhs.x,
         }
+    }
+
+    pub fn is_zero(&self) -> bool {
+        self.x == 0.0 && self.y == 0.0 && self.z == 0.0
     }
 }
 

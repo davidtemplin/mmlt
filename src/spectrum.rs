@@ -10,7 +10,7 @@ const LUMINANCE_WEIGHT: RgbSpectrum = RgbSpectrum {
     b: 0.072169,
 };
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct RgbSpectrum {
     pub r: f64,
     pub g: f64,
@@ -85,6 +85,12 @@ impl Div<f64> for RgbSpectrum {
             g: self.g / rhs,
             b: self.b / rhs,
         }
+    }
+}
+
+impl PartialEq for RgbSpectrum {
+    fn eq(&self, other: &Self) -> bool {
+        self.r == other.r && self.g == other.g && self.b == other.b
     }
 }
 
