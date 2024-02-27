@@ -98,8 +98,8 @@ impl SpecularBrdf {
 
 impl Bxdf for SpecularBrdf {
     fn evaluate(&self, wo: Vector, wi: Vector) -> Spectrum {
-        let d1 = wo.dot(self.normal);
-        let d2 = wi.dot(self.normal);
+        let d1 = wo.norm().dot(self.normal);
+        let d2 = wi.norm().dot(self.normal);
         if util::equals(d1, d2, 0.0001) {
             self.scale
         } else {
