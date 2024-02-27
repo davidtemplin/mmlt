@@ -128,9 +128,14 @@ mod tests {
     #[test]
     fn test_diffuse_brdf_sample_direction() {
         let scale = Spectrum::fill(0.8);
-        let normal = Vector::new(0.0, 1.0, 0.0);
+        let mut normal = Vector::new(0.0, 1.0, 0.0);
         let brdf = DiffuseBrdf::new(normal, scale);
         let mut sampler = MockSampler::new();
+        sampler.add(0.25);
+        sampler.add(0.25);
+        let direction = brdf.sample_direction(&mut sampler);
+        assert!(normal.dot(direction).is_sign_positive());
+        normal = Vector::new(1.0, 1.0, 1.0);
         sampler.add(0.25);
         sampler.add(0.25);
         let direction = brdf.sample_direction(&mut sampler);
