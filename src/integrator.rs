@@ -60,9 +60,9 @@ impl Integrator for MmltIntegrator {
 
         let mut sample_count: u64 = 0;
 
-        let mut image = Image::new();
+        let mut image = Image::configure(&scene.image_config);
 
-        let pixel_count = (scene.x_resolution * scene.y_resolution) as u64;
+        let pixel_count = (scene.image_config.width * scene.image_config.height) as u64;
 
         while sample_count / pixel_count < self.average_samples_per_pixel {
             sample_count = sample_count + 1;

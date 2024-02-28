@@ -26,11 +26,15 @@ pub struct Image {
 }
 
 impl Image {
-    pub fn new() -> Image {
+    pub fn configure(config: &ImageConfig) -> Image {
+        Image::new(config.width, config.height)
+    }
+
+    pub fn new(width: usize, height: usize) -> Image {
         Image {
-            pixels: vec![Spectrum::black(); 512 * 512],
-            width: 512,
-            height: 512,
+            pixels: vec![Spectrum::black(); width * height],
+            width,
+            height,
         }
     }
 

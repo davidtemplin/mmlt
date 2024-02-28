@@ -19,8 +19,7 @@ pub struct Scene {
     pub camera: Box<dyn Camera>,
     pub lights: Vec<Box<dyn Light>>,
     pub objects: Vec<Box<dyn Object>>,
-    pub x_resolution: usize,
-    pub y_resolution: usize,
+    pub image_config: ImageConfig,
 }
 
 impl SceneConfig {
@@ -36,8 +35,7 @@ impl SceneConfig {
             camera,
             lights,
             objects,
-            x_resolution: self.image.width,
-            y_resolution: self.image.height,
+            image_config: self.image,
         }
     }
 }
