@@ -123,3 +123,41 @@ pub fn equals(a: f64, b: f64, tolerance: f64) -> bool {
 pub fn reflect(d: Vector, n: Vector) -> Vector {
     d - (2.0 * d.dot(n) * n)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{erf_inv, orthonormal_basis};
+    use crate::vector::Vector;
+
+    #[test]
+    fn test_orthonormal_basis() {
+        let d1 = Vector::new(0.0, 0.0, 2.0);
+        let (u1, v1, w1) = orthonormal_basis(d1);
+        assert_eq!(u1, Vector::new(1.0, 0.0, 0.0));
+        assert_eq!(v1, Vector::new(0.0, 1.0, 0.0));
+        assert_eq!(w1, Vector::new(0.0, 0.0, 1.0));
+
+        let d2 = Vector::new(2.0, 0.0, 0.0);
+        let (u2, v2, w2) = orthonormal_basis(d2);
+        assert_eq!(u2, Vector::new(0.0, 0.0, -1.0));
+        assert_eq!(v2, Vector::new(0.0, 1.0, 0.0));
+        assert_eq!(w2, Vector::new(1.0, 0.0, 0.0));
+
+        let d3 = Vector::new(0.0, 2.0, 0.0);
+        let (u3, v3, w3) = orthonormal_basis(d3);
+        assert_eq!(u3, Vector::new(1.0, 0.0, 0.0));
+        assert_eq!(v3, Vector::new(0.0, 0.0, -1.0));
+        assert_eq!(w3, Vector::new(0.0, 1.0, 0.0));
+
+        let d4 = Vector::new(1.0, 1.0, 1.0);
+        let (u4, v4, w4) = orthonormal_basis(d4);
+        assert!((u4 - Vector::new(1.0, 0.0, -1.0).norm()).len() < 1e-5);
+        assert!((v4 - Vector::new(-1.0, 2.0, -1.0).norm()).len() < 1e-5);
+        assert!((w4 - d4.norm()).len() < 1e-5);
+    }
+
+    #[test]
+    fn test_erf_inv() {
+        assert!(erf_inv(0.5) - 0.47693628 < 2e-8);
+    }
+}
