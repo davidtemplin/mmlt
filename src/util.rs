@@ -168,8 +168,8 @@ mod tests {
         let angle = PI / 4.0;
         let n = Vector::new(-f64::cos(angle), f64::sin(angle), 0.0).norm();
         let a = direction_to_area(d, n);
-        let e = f64::cos(angle) / (d.len() * d.len());
-        assert!(a - e.abs() < 1e-8);
+        let e = (f64::cos(angle) / (d.len() * d.len())).abs();
+        assert!(a - e < 1e-8);
     }
 
     #[test]
