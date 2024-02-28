@@ -44,22 +44,18 @@ impl Image {
     }
 
     pub fn write(&self, path: String) -> Result<(), String> {
-        let w = || {
-            let file = File::create(path)?;
-            let mut writer = LineWriter::new(file);
-            writeln!(writer, "PF")?;
-            writeln!(writer, "{} {}", self.width, self.height)?;
-            writeln!(writer, "-1.0")?;
-            for pixel in &self.pixels {
-                let rgb = pixel.to_rgb();
-                writeln!(writer, "{} {} {}", rgb.r, rgb.g, rgb.b)?;
-            }
-            writer.flush()?;
-            Ok(())
-        };
-
-        let result = w();
-        result.map_err(|e: io::Error| e.to_string())
+        let m = |e: io::Error| e.to_string();
+        let file = File::create(path).map_err(m)?;
+        let mut writer = LineWriter::new(file);
+        writeln!(writer, "PF").map_err(m)?;
+        writeln!(writer, "{} {}", self.width, self.height).map_err(m)?;
+        writeln!(writer, "-1.0").map_err(m)?;
+        for pixel in &self.pixels {
+            let rgb = pixel.to_rgb();
+            writeln!(writer, "{} {} {}", rgb.r, rgb.g, rgb.b).map_err(m)?;
+        }
+        writer.flush().map_err(m)?;
+        Ok(())
     }
 }
 
