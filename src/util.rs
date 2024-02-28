@@ -166,7 +166,7 @@ mod tests {
     fn test_direction_to_area() {
         let d = Vector::new(10.0, 0.0, 0.0);
         let angle = PI / 4.0;
-        let n = Vector::new(-f64::sin(angle), f64::cos(angle), 0.0).norm();
+        let n = Vector::new(-f64::cos(angle), f64::sin(angle), 0.0).norm();
         let a = direction_to_area(d, n);
         let e = f64::cos(angle) / (d.len() * d.len());
         assert!(a - e.abs() < 1e-8);
