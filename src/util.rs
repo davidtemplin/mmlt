@@ -87,14 +87,14 @@ pub fn cosine_sample_hemisphere(n: Vector, sampler: &mut dyn Sampler) -> Vector 
 pub fn orthonormal_basis(n: Vector) -> (Vector, Vector, Vector) {
     let nz = n.norm();
     let ey = Vector::new(0.0, 1.0, 0.0);
-    let mut nx = nz.cross(ey).norm();
+    let mut nx = ey.cross(nz).norm();
     let ny = if nx.is_zero() {
         let ex = Vector::new(1.0, 0.0, 0.0);
-        let ny = ex.cross(nz).norm();
-        nx = nz.cross(ny).norm();
+        let ny = nz.cross(ex).norm();
+        nx = ny.cross(nz).norm();
         ny
     } else {
-        nx.cross(nz).norm()
+        nz.cross(nx).norm()
     };
     (nx, ny, nz)
 }

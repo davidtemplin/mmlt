@@ -9,6 +9,7 @@ use crate::{
     ray::Ray,
     sampler::Sampler,
     spectrum::Spectrum,
+    util,
     vector::{Point, PointConfig, Vector, VectorConfig},
 };
 
@@ -52,8 +53,8 @@ impl Camera for PinholeCamera {
     fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction {
         let x = sampler.sample(0.0..self.pixel_width);
         let y = sampler.sample(0.0..self.pixel_height);
-        let u = self.u * (x - self.pixel_width);
-        let v = self.v * (y - self.pixel_height);
+        let u = self.u * (x - self.pixel_width / 2.0);
+        let v = self.v * (y - self.pixel_height / 2.0);
         let w = self.w * self.distance;
         let direction = (u + v + w).norm();
         let pixel_coordinates = PixelCoordinates::new(x as usize, y as usize);
@@ -85,16 +86,22 @@ impl PinholeCamera {
         image_height: usize,
     ) -> PinholeCamera {
         let origin = Vector::configure(&config.origin);
+        let fov = config.field_of_view.configure();
+        let direction = Vector::configure(&config.direction);
+        PinholeCamera::new(origin, direction, fov, image_width, image_height)
+    }
+
+    pub fn new(
+        origin: Point,
+        direction: Vector,
+        field_of_view: f64,
+        image_width: usize,
+        image_height: usize,
+    ) -> PinholeCamera {
         let pixel_width = image_width as f64;
         let pixel_height = image_height as f64;
-        let fov = match config.field_of_view.unit {
-            AngleUnitConfig::Degrees => config.field_of_view.value * (PI / 180.0),
-            AngleUnitConfig::Radians => config.field_of_view.value,
-        };
-        let distance = pixel_height / (2.0 * (fov / 2.0).tan());
-        let w = Vector::configure(&config.direction).norm();
-        let u = w.cross(Vector::new(0.0, 1.0, 0.0)).norm();
-        let v = u.cross(w);
+        let distance = pixel_height / (2.0 * (field_of_view / 2.0).tan());
+        let (u, v, w) = util::orthonormal_basis(direction);
         PinholeCamera {
             id: String::from("camera"),
             u,
@@ -143,4 +150,155 @@ pub enum AngleUnitConfig {
 pub struct FieldOfViewConfig {
     value: f64,
     unit: AngleUnitConfig,
+}
+
+impl FieldOfViewConfig {
+    pub fn configure(&self) -> f64 {
+        match self.unit {
+            AngleUnitConfig::Degrees => self.value * (PI / 180.0),
+            AngleUnitConfig::Radians => self.value,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PinholeCamera;
+    use crate::{
+        camera::{AngleUnitConfig, Camera, FieldOfViewConfig, PinholeCameraConfig},
+        interaction::Interaction,
+        sampler::test::MockSampler,
+        spectrum::Spectrum,
+        vector::{Point, PointConfig, Vector, VectorConfig},
+    };
+    use std::f64::consts::PI;
+
+    #[test]
+    fn test_pinhole_camera_configure() {
+        let config = PinholeCameraConfig {
+            origin: PointConfig {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            direction: VectorConfig {
+                x: 0.0,
+                y: 0.0,
+                z: 1.0,
+            },
+            field_of_view: FieldOfViewConfig {
+                value: 60.0,
+                unit: AngleUnitConfig::Degrees,
+            },
+        };
+        let image_width = 512;
+        let image_height = 512;
+        let camera = PinholeCamera::configure(config, image_width, image_height);
+        assert_eq!(camera.id, "camera");
+        let origin = Vector::new(0.0, 0.0, 0.0);
+        assert_eq!(camera.origin, origin);
+        let h = image_height as f64;
+        let w = image_width as f64;
+        let field_of_view = 60.0 * PI / 180.0;
+        let a = field_of_view / 2.0;
+        let distance = h / (2.0 * a.tan());
+        assert_eq!(camera.distance, distance);
+        assert_eq!(camera.pixel_height, h);
+        assert_eq!(camera.pixel_width, w);
+        assert_eq!(camera.u, Vector::new(1.0, 0.0, 0.0));
+        assert_eq!(camera.v, Vector::new(0.0, 1.0, 0.0));
+        let direction = Vector::new(0.0, 0.0, 1.0);
+        assert_eq!(camera.w, direction);
+    }
+
+    #[test]
+    fn test_pinhole_camera_new() {
+        let origin = Point::new(0.0, 0.0, 0.0);
+        let direction = Vector::new(0.0, 0.0, 1.0);
+        let field_of_view = 60.0 * PI / 180.0;
+        let image_width = 512;
+        let image_height = 512;
+        let camera =
+            PinholeCamera::new(origin, direction, field_of_view, image_width, image_height);
+        assert_eq!(camera.id, "camera");
+        assert_eq!(camera.origin, origin);
+        let h = image_height as f64;
+        let w = image_width as f64;
+        let a = field_of_view / 2.0;
+        let distance = h / (2.0 * a.tan());
+        assert_eq!(camera.distance, distance);
+        assert_eq!(camera.pixel_height, h);
+        assert_eq!(camera.pixel_width, w);
+        assert_eq!(camera.u, Vector::new(1.0, 0.0, 0.0));
+        assert_eq!(camera.v, Vector::new(0.0, 1.0, 0.0));
+        assert_eq!(camera.w, direction);
+    }
+
+    #[test]
+    fn test_pinhole_camera_importance() {
+        let origin = Point::new(0.0, 0.0, 0.0);
+        let direction = Vector::new(0.0, 0.0, 1.0);
+        let field_of_view = 60.0 * PI / 180.0;
+        let image_width = 512;
+        let image_height = 512;
+        let camera =
+            PinholeCamera::new(origin, direction, field_of_view, image_width, image_height);
+        let d = Vector::new(1.0, 1.0, 1.0);
+        let c = d.norm().dot(direction);
+        let w = image_width as f64;
+        let h = image_height as f64;
+        let a = w * h;
+        let i = 1.0 / (a * c * c * c * c);
+        let importance = Spectrum::fill(i);
+        assert_eq!(camera.importance(origin, d), importance);
+    }
+
+    #[test]
+    fn test_pinhole_camera_probability() {
+        let origin = Point::new(0.0, 0.0, 0.0);
+        let direction = Vector::new(0.0, 0.0, 1.0);
+        let field_of_view = 60.0 * PI / 180.0;
+        let image_width = 512;
+        let image_height = 512;
+        let camera =
+            PinholeCamera::new(origin, direction, field_of_view, image_width, image_height);
+        let r = Vector::new(1.0, 1.0, 1.0);
+        let c = r.norm().dot(direction);
+        let w = image_width as f64;
+        let h = image_height as f64;
+        let a = w * h;
+        let half_fov = field_of_view / 2.0;
+        let distance = h / (2.0 * half_fov.tan());
+        let d = distance / c;
+        let probability = Some((d * d) / (a * c));
+        assert_eq!(camera.probability(origin, r), probability);
+    }
+
+    #[test]
+    fn test_pinhole_camera_sample_interaction() {
+        let origin = Point::new(0.0, 0.0, 0.0);
+        let direction = Vector::new(0.0, 0.0, 1.0);
+        let field_of_view = 60.0 * PI / 180.0;
+        let image_width = 512;
+        let image_height = 512;
+        let camera =
+            PinholeCamera::new(origin, direction, field_of_view, image_width, image_height);
+        let mut sampler = MockSampler::new();
+        sampler.add(0.5);
+        sampler.add(0.5);
+        let interaction = camera.sample_interaction(&mut sampler);
+        match interaction {
+            Interaction::Camera(camera_interaction) => {
+                let h = image_height as f64;
+                let half_fov = field_of_view / 2.0;
+                let distance = h / (2.0 * half_fov.tan());
+                assert_eq!(camera_interaction.pixel_coordinates.x, 256);
+                assert_eq!(camera_interaction.pixel_coordinates.y, 256);
+                assert_eq!(camera_interaction.geometry.normal, direction);
+                assert_eq!(camera_interaction.geometry.point, distance * origin);
+                assert_eq!(camera_interaction.geometry.direction, direction);
+            }
+            _ => assert!(false),
+        }
+    }
 }
