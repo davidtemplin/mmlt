@@ -126,8 +126,9 @@ pub fn reflect(d: Vector, n: Vector) -> Vector {
 
 #[cfg(test)]
 mod tests {
-    use super::{erf_inv, orthonormal_basis};
+    use super::{direction_to_area, erf_inv, geometry_term, orthonormal_basis};
     use crate::vector::Vector;
+    use std::f64::consts::PI;
 
     #[test]
     fn test_orthonormal_basis() {
@@ -159,5 +160,27 @@ mod tests {
     #[test]
     fn test_erf_inv() {
         assert!(erf_inv(0.5) - 0.47693628 < 2e-8);
+    }
+
+    #[test]
+    fn test_direction_to_area() {
+        let d = Vector::new(10.0, 0.0, 0.0);
+        let angle = PI / 4.0;
+        let n = Vector::new(-f64::sin(angle), f64::cos(angle), 0.0).norm();
+        let a = direction_to_area(d, n);
+        let e = f64::cos(angle) / (d.len() * d.len());
+        assert!(a - e.abs() < 1e-8);
+    }
+
+    #[test]
+    fn test_geometry_term() {
+        let d = Vector::new(10.0, 0.0, 0.0);
+        let angle1 = PI / 4.0;
+        let angle2 = PI / 3.0;
+        let n1 = Vector::new(f64::cos(angle1), -f64::sin(angle1), 0.0).norm();
+        let n2 = Vector::new(-f64::cos(angle2), f64::sin(angle2), 0.0).norm();
+        let g = geometry_term(d, n1, n2);
+        let e = ((f64::cos(angle1) * f64::cos(angle2)) / (d.len() * d.len())).abs();
+        assert!(g - e < 1e-8);
     }
 }
