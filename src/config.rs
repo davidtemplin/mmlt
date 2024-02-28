@@ -9,13 +9,24 @@ impl Config {
         let mut image_path: Option<String> = None;
 
         for chunk in args.chunks(2) {
-            let flag = &chunk[1];
-            let value = &chunk[2];
+            let flag = &chunk[0];
 
             match flag.as_str() {
-                "--scene" => scene_path.replace(value.clone()),
-                "--image" => image_path.replace(value.clone()),
-                _ => return Err(format!("unknown flag: {}", value)),
+                "--scene" => {
+                    if chunk.len() != 2 {
+                        return Err(String::from("no argument for --scene provided"));
+                    }
+                    let value = &chunk[1];
+                    scene_path.replace(value.clone());
+                }
+                "--image" => {
+                    if chunk.len() != 2 {
+                        return Err(String::from("no argument for --image provided"));
+                    }
+                    let value = &chunk[1];
+                    image_path.replace(value.clone());
+                }
+                _ => return Err(format!("unknown flag: {}", flag)),
             };
         }
 
@@ -25,5 +36,28 @@ impl Config {
         };
 
         Ok(config)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Config;
+
+    #[test]
+    fn test_parse() {
+        let scene_path = "/path/to/scene.yml";
+        let image_path = "/path/to/image.yml";
+        let args = vec![
+            String::from("--scene"),
+            String::from(scene_path),
+            String::from("--image"),
+            String::from(image_path),
+        ];
+        if let Ok(config) = Config::parse(args) {
+            assert_eq!(config.scene_path, String::from(scene_path));
+            assert_eq!(config.image_path, String::from(image_path));
+        } else {
+            panic!()
+        }
     }
 }
