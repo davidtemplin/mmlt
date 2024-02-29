@@ -50,7 +50,7 @@ impl TextureConfig {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use crate::{
         geometry::Geometry,
         spectrum::{Spectrum, SpectrumConfig},
