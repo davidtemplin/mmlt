@@ -7,6 +7,9 @@ use std::ops::Sub;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::approx::ApproxEq;
+use crate::util;
+
 pub type Point = Vector;
 
 #[derive(Copy, Clone, Debug)]
@@ -134,6 +137,14 @@ impl Neg for Vector {
 impl PartialEq for Vector {
     fn eq(&self, other: &Self) -> bool {
         self.x == other.x && self.y == other.y && self.z == other.z
+    }
+}
+
+impl ApproxEq for Vector {
+    fn approx_eq(&self, other: Self, tolerance: f64) -> bool {
+        util::equals(self.x, other.x, tolerance)
+            && util::equals(self.y, other.y, tolerance)
+            && util::equals(self.z, other.z, tolerance)
     }
 }
 

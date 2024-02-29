@@ -6,6 +6,7 @@ use crate::{
     scene::Scene,
 };
 
+mod approx;
 mod bsdf;
 mod camera;
 mod config;

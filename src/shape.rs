@@ -23,10 +23,11 @@ pub struct Sphere {
 
 impl Sphere {
     pub fn configure(config: &SphereConfig) -> Sphere {
-        Sphere {
-            center: Point::configure(&config.center),
-            radius: config.radius,
-        }
+        Sphere::new(Point::configure(&config.center), config.radius)
+    }
+
+    pub fn new(center: Point, radius: f64) -> Sphere {
+        Sphere { center, radius }
     }
 }
 
@@ -36,11 +37,12 @@ impl Shape for Sphere {
     }
 
     fn sample_intersection(&self, sampler: &mut dyn Sampler) -> Geometry {
-        let point = self.center + util::uniform_sample_sphere(sampler) * self.radius;
+        let direction = util::uniform_sample_sphere(sampler) * self.radius;
+        let point = self.center + direction;
         Geometry {
             point,
-            direction: point.norm(),
-            normal: point.norm(),
+            direction,
+            normal: direction.norm(),
         }
     }
 
@@ -186,5 +188,59 @@ impl ShapeConfig {
             ShapeConfig::Parallelogram(c) => Box::new(Parallelogram::configure(c)),
             ShapeConfig::Sphere(c) => Box::new(Sphere::configure(c)),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::f64::consts::PI;
+
+    use super::{Shape, Sphere};
+    use crate::{
+        approx::ApproxEq,
+        geometry::Geometry,
+        ray::Ray,
+        vector::{Point, Vector},
+    };
+
+    #[test]
+    fn test_sphere_area() {
+        let center = Point::new(10.0, 10.0, 10.0);
+        let radius = 2.0;
+        let sphere = Sphere::new(center, radius);
+        let area = sphere.area();
+        assert_eq!(area, 16.0 * PI);
+    }
+
+    #[test]
+    fn test_sphere_insersect() {
+        let tolerance = 1e-8;
+
+        let center = Point::new(10.0, 0.0, 0.0);
+        let radius = 1.0;
+        let sphere = Sphere::new(center, radius);
+        let origin = Point::new(0.0, 0.0, 0.0);
+        let direction = Vector::new(1.0, 0.0, 0.0);
+        let ray = Ray::new(origin, direction);
+        let actual = sphere.intersect(ray).unwrap();
+        let expected = Geometry {
+            point: Point::new(9.0, 0.0, 0.0),
+            normal: Vector::new(-1.0, 0.0, 0.0),
+            direction: Vector::new(9.0, 0.0, 0.0),
+        };
+        assert!(actual.approx_eq(expected, tolerance));
+
+        let center = Point::new(10.0, 10.0, 10.0);
+        let sphere = Sphere::new(center, radius);
+        let direction = Vector::new(1.0, 1.0, 1.0).norm();
+        let ray = Ray::new(origin, direction);
+        let actual = sphere.intersect(ray).unwrap();
+        let offset = Vector::new(-1.0, -1.0, -1.0).norm();
+        let expected = Geometry {
+            point: center + offset,
+            normal: offset,
+            direction: center + offset,
+        };
+        assert!(actual.approx_eq(expected, tolerance));
     }
 }

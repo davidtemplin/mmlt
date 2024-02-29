@@ -53,11 +53,8 @@ mod tests {
             String::from("--image"),
             String::from(image_path),
         ];
-        if let Ok(config) = Config::parse(args) {
-            assert_eq!(config.scene_path, String::from(scene_path));
-            assert_eq!(config.image_path, String::from(image_path));
-        } else {
-            panic!()
-        }
+        let config = Config::parse(args).unwrap();
+        assert_eq!(config.scene_path, String::from(scene_path));
+        assert_eq!(config.image_path, String::from(image_path));
     }
 }
