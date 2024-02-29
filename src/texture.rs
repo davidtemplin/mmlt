@@ -15,9 +15,11 @@ pub struct ConstantTexture {
 
 impl ConstantTexture {
     pub fn configure(config: &ConstantTextureConfig) -> ConstantTexture {
-        ConstantTexture {
-            value: Spectrum::configure(&config.spectrum),
-        }
+        ConstantTexture::new(Spectrum::configure(&config.spectrum))
+    }
+
+    pub fn new(value: Spectrum) -> ConstantTexture {
+        ConstantTexture { value }
     }
 }
 
@@ -44,5 +46,49 @@ impl TextureConfig {
         match self {
             TextureConfig::Constant(c) => Box::new(ConstantTexture::configure(&c)),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        geometry::Geometry,
+        spectrum::{Spectrum, SpectrumConfig},
+        texture::Texture,
+        vector::{Point, Vector},
+    };
+
+    use super::{ConstantTexture, ConstantTextureConfig};
+
+    #[test]
+    fn test_constant_texture_configure() {
+        let config = ConstantTextureConfig {
+            spectrum: SpectrumConfig {
+                r: 1.0,
+                g: 1.0,
+                b: 1.0,
+            },
+        };
+        let texture = ConstantTexture::configure(&config);
+        assert_eq!(texture.value, Spectrum::fill(1.0));
+    }
+
+    #[test]
+    fn test_constant_texture_new() {
+        let spectrum = Spectrum::fill(1.0);
+        let texture = ConstantTexture::new(spectrum);
+        assert_eq!(texture.value, spectrum);
+    }
+
+    #[test]
+    fn test_constant_texture_evaluate() {
+        let spectrum = Spectrum::fill(1.0);
+        let texture = ConstantTexture::new(spectrum);
+        let geometry = Geometry {
+            point: Point::new(0.0, 0.0, 0.0),
+            normal: Vector::new(0.0, 0.0, 0.0),
+            direction: Vector::new(0.0, 0.0, 0.0),
+        };
+        assert_eq!(texture.evaluate(geometry), spectrum);
     }
 }

@@ -96,7 +96,7 @@ impl PartialEq for RgbSpectrum {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SpectrumConfig {
-    r: f64,
-    g: f64,
-    b: f64,
+    pub r: f64,
+    pub g: f64,
+    pub b: f64,
 }
