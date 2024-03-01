@@ -85,11 +85,15 @@ pub struct Parallelogram {
 
 impl Parallelogram {
     pub fn configure(config: &ParallelogramConfig) -> Parallelogram {
-        Parallelogram {
-            origin: Point::configure(&config.origin),
-            a: Vector::configure(&config.a),
-            b: Vector::configure(&config.b),
-        }
+        Parallelogram::new(
+            Point::configure(&config.origin),
+            Vector::configure(&config.a),
+            Vector::configure(&config.b),
+        )
+    }
+
+    pub fn new(origin: Point, a: Vector, b: Vector) -> Parallelogram {
+        Parallelogram { origin, a, b }
     }
 }
 
@@ -105,7 +109,7 @@ impl Shape for Parallelogram {
         let a = sampler.sample(0.0..1.0);
         let b = sampler.sample(0.0..1.0);
         let point = self.a * a + self.b * b;
-        let normal = self.a.cross(self.b);
+        let normal = self.a.cross(self.b).norm();
         Geometry {
             point,
             normal,
@@ -114,7 +118,7 @@ impl Shape for Parallelogram {
     }
 
     fn intersect(&self, ray: Ray) -> Option<Geometry> {
-        let normal = self.a.cross(self.b);
+        let normal = self.a.cross(self.b).norm();
 
         let nd = normal.dot(ray.direction);
 
@@ -195,7 +199,7 @@ impl ShapeConfig {
 mod tests {
     use std::f64::consts::PI;
 
-    use super::{Shape, Sphere};
+    use super::{Parallelogram, Shape, Sphere};
     use crate::{
         approx::ApproxEq,
         geometry::Geometry,
@@ -240,6 +244,65 @@ mod tests {
             point: center + offset,
             normal: offset,
             direction: center + offset,
+        };
+        assert!(actual.approx_eq(expected, tolerance));
+
+        let center = Point::new(10.0, 10.0, 10.0);
+        let radius = 2.0;
+        let sphere = Sphere::new(center, radius);
+        let origin = Point::new(1.0, 2.0, -3.0);
+        let offset = Vector::new(-1.0, -1.0, 1.0).norm() * radius;
+        let direction = (center + offset - origin).norm();
+        let ray = Ray::new(origin, direction);
+        let actual = sphere.intersect(ray).unwrap();
+        let expected = Geometry {
+            point: center + offset,
+            normal: offset.norm(),
+            direction: center + offset - origin,
+        };
+        assert!(actual.approx_eq(expected, tolerance));
+    }
+
+    #[test]
+    fn test_parallelogram_area() {
+        let origin = Point::new(10.0, -1.0, 0.0);
+        let a = Vector::new(0.0, 0.0, 2.0);
+        let b = Vector::new(0.0, 2.0, 0.0);
+        let parallelogram = Parallelogram::new(origin, a, b);
+        assert_eq!(parallelogram.area(), a.len() * b.len());
+    }
+
+    #[test]
+    fn test_parallelogram_intersect() {
+        let tolerance = 1e-8;
+        let origin = Point::new(10.0, -1.0, 0.0);
+        let a = Vector::new(0.0, 0.0, 2.0);
+        let b = Vector::new(0.0, 2.0, 0.0);
+        let parallelogram = Parallelogram::new(origin, a, b);
+        let ray_origin = Point::new(0.0, 0.0, 0.0);
+        let direction = Vector::new(1.0, 0.0, 0.0);
+        let ray = Ray::new(ray_origin, direction);
+        let actual = parallelogram.intersect(ray).unwrap();
+        let expected = Geometry {
+            point: Point::new(10.0, 0.0, 0.0),
+            normal: Vector::new(-1.0, 0.0, 0.0),
+            direction: Vector::new(10.0, 0.0, 0.0),
+        };
+        assert!(actual.approx_eq(expected, tolerance));
+
+        let origin = Point::new(10.0, 10.0, 10.0);
+        let a = Vector::new(0.0, 0.0, 2.0);
+        let b = Vector::new(0.0, 2.0, 0.0);
+        let parallelogram = Parallelogram::new(origin, a, b);
+        let ray_origin = Point::new(1.0, 2.0, 3.0);
+        let target = origin + 0.5 * a + 0.5 * b;
+        let direction = (target - ray_origin).norm();
+        let ray = Ray::new(ray_origin, direction);
+        let actual = parallelogram.intersect(ray).unwrap();
+        let expected = Geometry {
+            point: target,
+            normal: a.cross(b).norm(),
+            direction: target - ray_origin,
         };
         assert!(actual.approx_eq(expected, tolerance));
     }
