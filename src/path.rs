@@ -191,7 +191,7 @@ impl<'a> Path<'a> {
         }
     }
 
-    pub fn connect_camera_to_light(
+    fn connect_camera_to_light(
         scene: &'a Scene,
         sampler: &mut impl Sampler,
         technique: Technique,
@@ -205,7 +205,7 @@ impl<'a> Path<'a> {
         Path::compute(&mut interactions, technique)
     }
 
-    pub fn connect_full_light_path(
+    fn connect_full_light_path(
         scene: &'a Scene,
         sampler: &mut impl Sampler,
         technique: Technique,
@@ -218,7 +218,7 @@ impl<'a> Path<'a> {
         Path::compute(&mut interactions, technique)
     }
 
-    pub fn connect_full_camera_path(
+    fn connect_full_camera_path(
         scene: &'a Scene,
         sampler: &mut impl Sampler,
         technique: Technique,
@@ -230,7 +230,7 @@ impl<'a> Path<'a> {
         Path::compute(&mut interactions, technique)
     }
 
-    pub fn connect_camera_to_light_subpath(
+    fn connect_camera_to_light_subpath(
         scene: &'a Scene,
         sampler: &mut impl Sampler,
         technique: Technique,
@@ -251,7 +251,7 @@ impl<'a> Path<'a> {
         Path::compute(&mut interactions, technique)
     }
 
-    pub fn connect_camera_subpath_to_light(
+    fn connect_camera_subpath_to_light(
         scene: &'a Scene,
         sampler: &mut impl Sampler,
         technique: Technique,
@@ -272,7 +272,7 @@ impl<'a> Path<'a> {
         Path::compute(&mut interactions, technique)
     }
 
-    pub fn connect_camera_subpath_to_light_subpath(
+    fn connect_camera_subpath_to_light_subpath(
         scene: &'a Scene,
         sampler: &mut impl Sampler,
         technique: Technique,
