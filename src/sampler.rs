@@ -23,9 +23,8 @@ pub struct MmltSampler {
 struct Sample {
     value: f64,
     backup_value: f64,
-    iteration: u64,
-    backup_iteration: u64,
     modified_at: u64,
+    backup_modified_at: u64,
 }
 
 impl Sample {
@@ -33,20 +32,19 @@ impl Sample {
         Sample {
             value,
             backup_value: value,
-            iteration: 0,
-            backup_iteration: 0,
             modified_at: 0,
+            backup_modified_at: 0,
         }
     }
 
     fn backup(&mut self) {
         self.backup_value = self.value;
-        self.backup_iteration = self.iteration;
+        self.backup_modified_at = self.modified_at;
     }
 
     fn restore(&mut self) {
         self.value = self.backup_value;
-        self.iteration = self.backup_iteration;
+        self.modified_at = self.backup_modified_at;
     }
 }
 
@@ -93,8 +91,8 @@ impl MmltSampler {
             if sample.modified_at == self.iteration {
                 sample.restore();
             }
-            self.iteration = self.iteration - 1;
         }
+        self.iteration = self.iteration - 1;
     }
 }
 
