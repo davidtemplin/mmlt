@@ -16,7 +16,7 @@ pub struct MmltSampler {
     samples: Vec<Sample>,
     iteration: u64,
     large_step_at: u64,
-    large_step: bool,
+    mutation_type: MutationType,
     rng: Box<dyn RngCore>,
 }
 
@@ -48,6 +48,7 @@ impl Sample {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
 pub enum MutationType {
     LargeStep,
     SmallStep,
@@ -64,7 +65,7 @@ impl MmltSampler {
             samples: Vec::new(),
             iteration: 0,
             large_step_at: 0,
-            large_step: false,
+            mutation_type: MutationType::SmallStep,
             rng: Box::new(thread_rng()),
         }
     }
@@ -72,16 +73,16 @@ impl MmltSampler {
     pub fn mutate(&mut self) -> MutationType {
         self.iteration = self.iteration + 1;
         let r = self.rng.gen_range(0.0..1.0);
-        self.large_step = r < self.large_step_probability;
-        if self.large_step {
+        self.mutation_type = if r < self.large_step_probability {
             MutationType::LargeStep
         } else {
             MutationType::SmallStep
-        }
+        };
+        self.mutation_type
     }
 
     pub fn accept(&mut self) {
-        if self.large_step {
+        if let MutationType::LargeStep = self.mutation_type {
             self.large_step_at = self.iteration;
         }
     }
@@ -124,16 +125,17 @@ impl Sampler for MmltSampler {
 
         sample.backup();
 
-        if self.large_step {
-            sample.value = self.rng.gen_range(0.0..1.0);
-        } else {
-            let n = (self.iteration - sample.modified_at) as f64;
-            let normal_value =
-                f64::sqrt(2.0) * util::erf_inv(2.0 * self.rng.gen_range(0.0..1.0) - 1.0);
-            let effective_sigma = self.sigma * n.sqrt();
-            sample.value = sample.value + normal_value * effective_sigma;
-            sample.value = sample.value - sample.value.floor();
-        }
+        match self.mutation_type {
+            MutationType::SmallStep => {
+                let n = (self.iteration - sample.modified_at) as f64;
+                let normal_value =
+                    f64::sqrt(2.0) * util::erf_inv(2.0 * self.rng.gen_range(0.0..1.0) - 1.0);
+                let effective_sigma = self.sigma * n.sqrt();
+                sample.value = sample.value + normal_value * effective_sigma;
+                sample.value = sample.value - sample.value.floor();
+            }
+            MutationType::LargeStep => sample.value = self.rng.gen_range(0.0..1.0),
+        };
 
         sample.modified_at = self.iteration;
 
