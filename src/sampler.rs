@@ -14,7 +14,7 @@ pub struct MmltSampler {
     stream_count: usize,
     stream_index: usize,
     sample_index: usize,
-    state: Vec<Sample>,
+    samples: Vec<Sample>,
     iteration: u64,
     large_step_at: u64,
     large_step: bool,
@@ -23,7 +23,7 @@ pub struct MmltSampler {
 
 struct Sample {
     value: f64,
-    backup: f64,
+    backup_value: f64,
     iteration: u64,
     backup_iteration: u64,
     modified_at: u64,
@@ -33,7 +33,7 @@ impl Sample {
     fn new(value: f64) -> Sample {
         Sample {
             value,
-            backup: value,
+            backup_value: value,
             iteration: 0,
             backup_iteration: 0,
             modified_at: 0,
@@ -41,12 +41,12 @@ impl Sample {
     }
 
     fn backup(&mut self) {
-        self.backup = self.value;
+        self.backup_value = self.value;
         self.backup_iteration = self.iteration;
     }
 
     fn restore(&mut self) {
-        self.value = self.backup;
+        self.value = self.backup_value;
         self.iteration = self.backup_iteration;
     }
 }
@@ -57,18 +57,27 @@ pub enum MutationType {
 }
 
 impl MmltSampler {
-    pub fn new(stream_count: usize) -> MmltSampler {
+    pub fn default(stream_count: usize) -> MmltSampler {
+        MmltSampler::new(stream_count, 0.3, 0.01, Box::new(thread_rng()))
+    }
+
+    pub fn new(
+        stream_count: usize,
+        large_step_probability: f64,
+        sigma: f64,
+        rng: Box<dyn RngCore>,
+    ) -> MmltSampler {
         MmltSampler {
-            large_step_probability: 0.3,
-            sigma: 0.01,
+            large_step_probability,
+            sigma,
             stream_count,
             stream_index: 0,
             sample_index: 0,
-            state: Vec::new(),
+            samples: Vec::new(),
             iteration: 0,
             large_step_at: 0,
             large_step: false,
-            rng: Box::new(thread_rng()),
+            rng,
         }
     }
 
@@ -89,7 +98,7 @@ impl MmltSampler {
     }
 
     pub fn reject(&mut self) {
-        for sample in &mut self.state {
+        for sample in &mut self.samples {
             if sample.modified_at == self.iteration {
                 sample.restore();
             }
@@ -113,14 +122,14 @@ impl Sampler for MmltSampler {
     fn sample(&mut self, range: Range<f64>) -> f64 {
         let index = self.stream_count * self.sample_index + self.stream_index;
 
-        if index >= self.state.len() {
+        if index >= self.samples.len() {
             let value = self.rng.gen_range(0.0..1.0);
             let sample = Sample::new(value);
-            self.state.push(sample);
+            self.samples.push(sample);
             return value;
         }
 
-        let sample = &mut self.state[index];
+        let sample = &mut self.samples[index];
 
         if sample.modified_at < self.large_step_at {
             sample.value = self.rng.gen_range(0.0..1.0);
@@ -132,7 +141,7 @@ impl Sampler for MmltSampler {
         if self.large_step {
             sample.value = self.rng.gen_range(0.0..1.0);
         } else {
-            let n = f64::from((self.iteration - sample.modified_at) as i32);
+            let n = (self.iteration - sample.modified_at) as f64;
             let normal_value =
                 f64::sqrt(2.0) * util::erf_inv(2.0 * self.rng.gen_range(0.0..1.0) - 1.0);
             let effective_sigma = self.sigma * n.sqrt();

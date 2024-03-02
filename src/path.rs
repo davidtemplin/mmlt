@@ -159,7 +159,7 @@ const STREAM_COUNT: usize = 3;
 
 impl<'a> Path<'a> {
     pub fn sampler() -> MmltSampler {
-        MmltSampler::new(STREAM_COUNT)
+        MmltSampler::default(STREAM_COUNT)
     }
 
     pub fn generate(
