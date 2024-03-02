@@ -50,7 +50,7 @@ impl Integrator for MmltIntegrator {
         let mut contributions: Vec<Contribution> = Vec::new();
 
         for k in 1..self.max_path_lenth {
-            let mut sampler = MmltSampler::default(3);
+            let mut sampler = MmltSampler::new(3);
             if let Some(path) = Path::generate(scene, &mut sampler, k) {
                 let contribution = path.contribution();
                 samplers[k] = sampler;

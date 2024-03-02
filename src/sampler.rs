@@ -3,7 +3,6 @@ use rand::{thread_rng, Rng, RngCore};
 use std::ops::Range;
 
 pub trait Sampler {
-    fn start_iteration(&mut self);
     fn start_stream(&mut self, index: usize);
     fn sample(&mut self, range: Range<f64>) -> f64;
 }
@@ -57,19 +56,10 @@ pub enum MutationType {
 }
 
 impl MmltSampler {
-    pub fn default(stream_count: usize) -> MmltSampler {
-        MmltSampler::new(stream_count, 0.3, 0.01, Box::new(thread_rng()))
-    }
-
-    pub fn new(
-        stream_count: usize,
-        large_step_probability: f64,
-        sigma: f64,
-        rng: Box<dyn RngCore>,
-    ) -> MmltSampler {
+    pub fn new(stream_count: usize) -> MmltSampler {
         MmltSampler {
-            large_step_probability,
-            sigma,
+            large_step_probability: 0.3,
+            sigma: 0.01,
             stream_count,
             stream_index: 0,
             sample_index: 0,
@@ -77,11 +67,12 @@ impl MmltSampler {
             iteration: 0,
             large_step_at: 0,
             large_step: false,
-            rng,
+            rng: Box::new(thread_rng()),
         }
     }
 
     pub fn mutate(&mut self) -> MutationType {
+        self.iteration = self.iteration + 1;
         let r = self.rng.gen_range(0.0..1.0);
         self.large_step = r < self.large_step_probability;
         if self.large_step {
@@ -108,15 +99,12 @@ impl MmltSampler {
 }
 
 impl Sampler for MmltSampler {
-    fn start_iteration(&mut self) {
-        self.iteration = self.iteration + 1;
-    }
-
     fn start_stream(&mut self, index: usize) {
         if index >= self.stream_count {
             panic!("invalid stream index")
         }
         self.stream_index = index;
+        self.sample_index = 0;
     }
 
     fn sample(&mut self, range: Range<f64>) -> f64 {
@@ -151,7 +139,9 @@ impl Sampler for MmltSampler {
 
         sample.modified_at = self.iteration;
 
-        sample.value * (range.start - range.end) + range.start
+        self.sample_index = self.sample_index + 1;
+
+        sample.value * (range.end - range.start) + range.start
     }
 }
 
@@ -177,10 +167,6 @@ pub mod test {
     }
 
     impl Sampler for MockSampler {
-        fn start_iteration(&mut self) {
-            // nothing
-        }
-
         fn start_stream(&mut self, _index: usize) {
             // nothing
         }

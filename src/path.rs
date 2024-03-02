@@ -159,7 +159,7 @@ const STREAM_COUNT: usize = 3;
 
 impl<'a> Path<'a> {
     pub fn sampler() -> MmltSampler {
-        MmltSampler::default(STREAM_COUNT)
+        MmltSampler::new(STREAM_COUNT)
     }
 
     pub fn generate(
@@ -167,7 +167,6 @@ impl<'a> Path<'a> {
         sampler: &mut impl Sampler,
         path_length: usize,
     ) -> Option<Path<'a>> {
-        sampler.start_iteration();
         sampler.start_stream(TECHNIQUE_STREAM);
 
         let technique = Technique::sample(path_length, sampler);
