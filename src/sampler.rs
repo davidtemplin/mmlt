@@ -1,5 +1,5 @@
 use crate::util;
-use rand::{thread_rng, Rng};
+use rand::{thread_rng, Rng, RngCore};
 use std::ops::Range;
 
 pub trait Sampler {
@@ -18,6 +18,7 @@ pub struct MmltSampler {
     iteration: u64,
     large_step_at: u64,
     large_step: bool,
+    rng: Box<dyn RngCore>,
 }
 
 struct Sample {
@@ -67,12 +68,12 @@ impl MmltSampler {
             iteration: 0,
             large_step_at: 0,
             large_step: false,
+            rng: Box::new(thread_rng()),
         }
     }
 
     pub fn mutate(&mut self) -> MutationType {
-        let rng = &mut thread_rng();
-        let r = rng.gen_range(0.0..1.0);
+        let r = self.rng.gen_range(0.0..1.0);
         self.large_step = r < self.large_step_probability;
         if self.large_step {
             MutationType::LargeStep
@@ -112,10 +113,8 @@ impl Sampler for MmltSampler {
     fn sample(&mut self, range: Range<f64>) -> f64 {
         let index = self.stream_count * self.sample_index + self.stream_index;
 
-        let mut rng = thread_rng();
-
         if index >= self.state.len() {
-            let value = rng.gen_range(0.0..1.0);
+            let value = self.rng.gen_range(0.0..1.0);
             let sample = Sample::new(value);
             self.state.push(sample);
             return value;
@@ -124,17 +123,18 @@ impl Sampler for MmltSampler {
         let sample = &mut self.state[index];
 
         if sample.modified_at < self.large_step_at {
-            sample.value = rng.gen_range(0.0..1.0);
+            sample.value = self.rng.gen_range(0.0..1.0);
             sample.modified_at = self.large_step_at;
         }
 
         sample.backup();
 
         if self.large_step {
-            sample.value = rng.gen_range(0.0..1.0);
+            sample.value = self.rng.gen_range(0.0..1.0);
         } else {
             let n = f64::from((self.iteration - sample.modified_at) as i32);
-            let normal_value = f64::sqrt(2.0) * util::erf_inv(2.0 * rng.gen_range(0.0..1.0) - 1.0);
+            let normal_value =
+                f64::sqrt(2.0) * util::erf_inv(2.0 * self.rng.gen_range(0.0..1.0) - 1.0);
             let effective_sigma = self.sigma * n.sqrt();
             sample.value = sample.value + normal_value * effective_sigma;
             sample.value = sample.value - sample.value.floor();
