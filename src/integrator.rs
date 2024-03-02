@@ -22,7 +22,7 @@ impl MmltIntegrator {
     pub fn new() -> MmltIntegrator {
         MmltIntegrator {
             max_path_lenth: 20,
-            initial_sample_count: 10_000,
+            initial_sample_count: 100_000,
             average_samples_per_pixel: 100,
         }
     }
@@ -50,7 +50,7 @@ impl Integrator for MmltIntegrator {
         let mut contributions: Vec<Contribution> = Vec::new();
 
         for k in 1..self.max_path_lenth {
-            let mut sampler = MmltSampler::new(3);
+            let mut sampler = Path::sampler();
             if let Some(path) = Path::generate(scene, &mut sampler, k) {
                 let contribution = path.contribution();
                 samplers[k] = sampler;
@@ -83,7 +83,7 @@ impl Integrator for MmltIntegrator {
                         MutationType::LargeStep => 1.0,
                         MutationType::SmallStep => 0.0,
                     };
-                    let weight = (f64::from(k as i32) + 2.0) / pdf.value(k) * (a + step_factor)
+                    let weight = (k as f64 + 2.0) / pdf.value(k) * (a + step_factor)
                         / (proposal_contribution.scalar / b[k] + sampler.large_step_probability);
                     let spectrum = proposal_contribution.spectrum * weight;
                     image.contribute(spectrum, proposal_contribution.pixel_coordinates);
