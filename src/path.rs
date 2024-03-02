@@ -102,7 +102,7 @@ impl<'a> Vertex<'a> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Technique {
     camera: usize,
     light: usize,
@@ -110,10 +110,9 @@ pub struct Technique {
 
 impl Technique {
     pub fn sample(path_length: usize, sampler: &mut impl Sampler) -> Technique {
-        let length = path_length as f64;
-        let end = length + 1.0;
+        let end = path_length as f64 + 1.0;
         let r = sampler.sample(0.0..end);
-        let camera = (r * end).floor() as usize;
+        let camera = r.floor() as usize;
         let light = path_length - camera;
         Technique { camera, light }
     }
@@ -497,5 +496,32 @@ impl<'a> Path<'a> {
             .map(|v| v.weight(Direction::Reverse))
             .fold((1.0, 0.0), fold);
         1.0 / (1.0 + sum1 + sum2)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::sampler::test::MockSampler;
+
+    use super::Technique;
+
+    #[test]
+    fn test_technique_sample() {
+        let mut sampler = MockSampler::new();
+
+        sampler.add(0.0);
+        let technique = Technique::sample(2, &mut sampler);
+        assert_eq!(technique.camera, 0);
+        assert_eq!(technique.light, 2);
+
+        sampler.add(0.5);
+        let technique = Technique::sample(2, &mut sampler);
+        assert_eq!(technique.camera, 1);
+        assert_eq!(technique.light, 1);
+
+        sampler.add(0.99);
+        let technique = Technique::sample(2, &mut sampler);
+        assert_eq!(technique.camera, 2);
+        assert_eq!(technique.light, 0);
     }
 }
