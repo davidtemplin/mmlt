@@ -60,7 +60,7 @@ impl<'a> Vertex<'a> {
             Vertex::Light(v) => v
                 .interaction
                 .light
-                .radiance(v.interaction.geometry.point, v.wo),
+                .radiance(v.wo, v.interaction.geometry.normal),
             Vertex::Object(v) => v.interaction.reflectance(v.wo, v.wi) * v.geometry_term,
         }
     }

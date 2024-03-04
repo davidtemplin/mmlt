@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub trait Light {
-    fn radiance(&self, point: Point, direction: Vector) -> Spectrum;
+    fn radiance(&self, direction: Vector, normal: Vector) -> Spectrum;
     fn probability(&self, point: Point, normal: Vector, direction: Vector) -> Option<f64>;
     fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction;
     fn intersect(&self, ray: Ray) -> Option<Interaction>;
@@ -111,4 +111,56 @@ pub struct DiffuseAreaLightConfig {
     pub id: String,
     pub shape: ShapeConfig,
     pub spectrum: SpectrumConfig,
+}
+
+#[cfg(test)]
+mod tests {
+    use std::f64::consts::PI;
+
+    use crate::{
+        light::Light,
+        shape::Sphere,
+        spectrum::{RgbSpectrum, Spectrum},
+        vector::{Point, Vector},
+    };
+
+    use super::DiffuseAreaLight;
+
+    #[test]
+    fn test_diffuse_area_light_radiance() {
+        let shape = Sphere::new(Point::new(0.0, 0.0, 0.0), 2.0);
+        let radiance = RgbSpectrum::fill(10.0);
+        let light = DiffuseAreaLight {
+            id: String::from("light-1"),
+            shape: Box::new(shape),
+            radiance,
+            light_count: 1,
+        };
+        let normal = Vector::new(0.0, 1.0, 0.0);
+        let direction = Vector::new(1.0, 1.0, 0.0);
+        assert_eq!(light.radiance(direction, normal), radiance);
+        assert_eq!(light.radiance(-direction, normal), Spectrum::black());
+    }
+
+    #[test]
+    fn test_diffuse_area_light_probability() {
+        let light_count = 4;
+        let radius = 2.0;
+        let shape = Sphere::new(Point::new(0.0, 0.0, 0.0), radius);
+        let radiance = RgbSpectrum::fill(10.0);
+        let light = DiffuseAreaLight {
+            id: String::from("light-1"),
+            shape: Box::new(shape),
+            radiance,
+            light_count,
+        };
+        let point = Point::new(0.0, 1.0, 0.0);
+        let normal = Vector::new(0.0, 1.0, 0.0);
+        let direction = Vector::new(1.0, 1.0, 0.0);
+        let p_light = 1.0 / light_count as f64;
+        let p_point = 1.0 / (4.0 * PI * radius * radius);
+        let p_direction = normal.dot(direction.norm()) / PI;
+        let p_total = p_light * p_point * p_direction;
+        assert_eq!(light.probability(point, normal, direction), Some(p_total));
+    }
 }
