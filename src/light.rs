@@ -119,7 +119,7 @@ mod tests {
 
     use crate::{
         light::Light,
-        shape::Sphere,
+        shape::{Shape, Sphere},
         spectrum::{RgbSpectrum, Spectrum},
         vector::{Point, Vector},
     };
@@ -147,6 +147,7 @@ mod tests {
         let light_count = 4;
         let radius = 2.0;
         let shape = Sphere::new(Point::new(0.0, 0.0, 0.0), radius);
+        let area = shape.area();
         let radiance = RgbSpectrum::fill(10.0);
         let light = DiffuseAreaLight {
             id: String::from("light-1"),
@@ -158,7 +159,7 @@ mod tests {
         let normal = Vector::new(0.0, 1.0, 0.0);
         let direction = Vector::new(1.0, 1.0, 0.0);
         let p_light = 1.0 / light_count as f64;
-        let p_point = 1.0 / (4.0 * PI * radius * radius);
+        let p_point = 1.0 / area;
         let p_direction = normal.dot(direction.norm()) / PI;
         let p_total = p_light * p_point * p_direction;
         assert_eq!(light.probability(point, normal, direction), Some(p_total));
