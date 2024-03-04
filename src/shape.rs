@@ -12,7 +12,7 @@ use crate::{
 
 pub trait Shape {
     fn area(&self) -> f64;
-    fn sample_intersection(&self, sampler: &mut dyn Sampler) -> Geometry;
+    fn sample_geometry(&self, sampler: &mut dyn Sampler) -> Geometry;
     fn intersect(&self, ray: Ray) -> Option<Geometry>;
 }
 
@@ -36,7 +36,7 @@ impl Shape for Sphere {
         4.0 * PI * self.radius * self.radius
     }
 
-    fn sample_intersection(&self, sampler: &mut dyn Sampler) -> Geometry {
+    fn sample_geometry(&self, sampler: &mut dyn Sampler) -> Geometry {
         let direction = util::uniform_sample_sphere(sampler) * self.radius;
         let point = self.center + direction;
         Geometry {
@@ -105,7 +105,7 @@ impl Shape for Parallelogram {
         area
     }
 
-    fn sample_intersection(&self, sampler: &mut dyn Sampler) -> Geometry {
+    fn sample_geometry(&self, sampler: &mut dyn Sampler) -> Geometry {
         let a = sampler.sample(0.0..1.0);
         let b = sampler.sample(0.0..1.0);
         let point = self.a * a + self.b * b;
