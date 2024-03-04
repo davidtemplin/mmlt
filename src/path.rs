@@ -60,7 +60,7 @@ impl<'a> Vertex<'a> {
             Vertex::Light(v) => v
                 .interaction
                 .light
-                .radiance(v.wo, v.interaction.geometry.normal),
+                .radiance(v.interaction.geometry.normal, v.wo),
             Vertex::Object(v) => v.interaction.reflectance(v.wo, v.wi) * v.geometry_term,
         }
     }
@@ -74,11 +74,10 @@ impl<'a> Vertex<'a> {
                     * v.direction_to_area
             }
             Vertex::Light(v) => {
-                v.interaction.light.probability(
-                    v.interaction.geometry.point,
-                    v.interaction.geometry.normal,
-                    v.wo,
-                )? * v.direction_to_area
+                v.interaction
+                    .light
+                    .probability(v.interaction.geometry.normal, v.wo)?
+                    * v.direction_to_area
             }
             Vertex::Object(v) => match path_type {
                 PathType::Camera => v.interaction.probability(v.wo, v.wi)? * v.direction_to_area,
