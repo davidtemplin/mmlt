@@ -203,7 +203,7 @@ impl<'a> Path<'a> {
         let light = scene.sample_light(sampler);
         let light_interaction = light.sample_interaction(sampler);
         let mut interactions = vec![camera_interaction, light_interaction];
-        Path::compute(&mut interactions, technique)
+        Path::connect(&mut interactions, technique)
     }
 
     fn connect_full_light_path(
@@ -216,7 +216,7 @@ impl<'a> Path<'a> {
         let light_interaction = light.sample_interaction(sampler);
         let mut interactions = Path::trace(scene, sampler, light_interaction, technique.light)?;
         interactions.last().filter(|i| i.is_camera())?;
-        Path::compute(&mut interactions, technique)
+        Path::connect(&mut interactions, technique)
     }
 
     fn connect_full_camera_path(
@@ -228,7 +228,7 @@ impl<'a> Path<'a> {
         let camera_interaction = scene.camera.sample_interaction(sampler);
         let mut interactions = Path::trace(scene, sampler, camera_interaction, technique.camera)?;
         interactions.last().filter(|i| i.is_light())?;
-        Path::compute(&mut interactions, technique)
+        Path::connect(&mut interactions, technique)
     }
 
     fn connect_camera_to_light_subpath(
@@ -249,7 +249,7 @@ impl<'a> Path<'a> {
         );
         let interaction = scene.intersect(ray).filter(|i| i.is_camera())?;
         interactions.push(interaction);
-        Path::compute(&mut interactions, technique)
+        Path::connect(&mut interactions, technique)
     }
 
     fn connect_camera_subpath_to_light(
@@ -270,7 +270,7 @@ impl<'a> Path<'a> {
         );
         let interaction = scene.intersect(ray).filter(|i| i.is_light())?;
         interactions.push(interaction);
-        Path::compute(&mut interactions, technique)
+        Path::connect(&mut interactions, technique)
     }
 
     fn connect_camera_subpath_to_light_subpath(
@@ -299,7 +299,7 @@ impl<'a> Path<'a> {
         let mut interactions = camera_interactions;
         interactions.push(interaction);
         interactions.extend(light_interactions);
-        Path::compute(&mut interactions, technique)
+        Path::connect(&mut interactions, technique)
     }
 
     fn trace(
@@ -319,7 +319,7 @@ impl<'a> Path<'a> {
         Some(stack)
     }
 
-    fn compute(interactions: &mut Vec<Interaction<'a>>, technique: Technique) -> Option<Path<'a>> {
+    fn connect(interactions: &mut Vec<Interaction<'a>>, technique: Technique) -> Option<Path<'a>> {
         let mut vertices: Vec<Vertex<'a>> = Vec::new();
 
         let mut previous_geometry: Option<Geometry> = None;
