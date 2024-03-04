@@ -10,12 +10,12 @@ use crate::{
     shape::{Shape, ShapeConfig},
     spectrum::{Spectrum, SpectrumConfig},
     util,
-    vector::Vector,
+    vector::{Point, Vector},
 };
 
 pub trait Light {
-    fn radiance(&self, normal: Vector, direction: Vector) -> Spectrum;
-    fn probability(&self, normal: Vector, direction: Vector) -> Option<f64>;
+    fn radiance(&self, point: Point, normal: Vector, direction: Vector) -> Spectrum;
+    fn probability(&self, point: Point, normal: Vector, direction: Vector) -> Option<f64>;
     fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction;
     fn intersect(&self, ray: Ray) -> Option<Interaction>;
     fn id(&self) -> &String;
@@ -29,7 +29,7 @@ pub struct DiffuseAreaLight {
 }
 
 impl Light for DiffuseAreaLight {
-    fn radiance(&self, normal: Vector, direction: Vector) -> Spectrum {
+    fn radiance(&self, _point: Point, normal: Vector, direction: Vector) -> Spectrum {
         if normal.dot(direction) > 0.0 {
             self.radiance
         } else {
@@ -37,7 +37,7 @@ impl Light for DiffuseAreaLight {
         }
     }
 
-    fn probability(&self, normal: Vector, direction: Vector) -> Option<f64> {
+    fn probability(&self, _point: Point, normal: Vector, direction: Vector) -> Option<f64> {
         let p = direction.norm().dot(normal) / (self.light_count as f64 * self.shape.area() * PI);
         Some(p)
     }
@@ -136,10 +136,11 @@ mod tests {
             radiance,
             light_count: 1,
         };
+        let point = Point::new(0.0, 2.0, 0.0);
         let normal = Vector::new(0.0, 1.0, 0.0);
         let direction = Vector::new(1.0, 1.0, 0.0);
-        assert_eq!(light.radiance(normal, direction), radiance);
-        assert_eq!(light.radiance(normal, -direction), Spectrum::black());
+        assert_eq!(light.radiance(point, normal, direction), radiance);
+        assert_eq!(light.radiance(point, normal, -direction), Spectrum::black());
     }
 
     #[test]
@@ -155,12 +156,13 @@ mod tests {
             radiance,
             light_count,
         };
+        let point = Point::new(0.0, 2.0, 0.0);
         let normal = Vector::new(0.0, 1.0, 0.0);
         let direction = Vector::new(1.0, 1.0, 0.0);
         let p_light = 1.0 / light_count as f64;
         let p_point = 1.0 / area;
         let p_direction = normal.dot(direction.norm()) / PI;
         let p_total = p_light * p_point * p_direction;
-        assert_eq!(light.probability(normal, direction), Some(p_total));
+        assert_eq!(light.probability(point, normal, direction), Some(p_total));
     }
 }
