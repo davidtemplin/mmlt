@@ -34,11 +34,20 @@ pub struct PinholeCamera {
 
 impl Camera for PinholeCamera {
     fn importance(&self, _point: Point, direction: Vector) -> Spectrum {
-        let c = direction.norm().dot(self.w);
-        let a = self.pixel_width * self.pixel_height;
-        let c2 = c * c;
-        let c4 = c2 * c2;
-        Spectrum::fill(1.0 / (a * c4))
+        let d = direction.norm();
+        let screen_center = self.origin + (self.w * self.distance);
+        let screen_position = self.origin + d * (self.distance / d.dot(self.w)) - screen_center;
+        let px = self.u.dot(screen_position) + self.pixel_width * 0.5;
+        let py = -self.v.dot(screen_position) + self.pixel_height * 0.5;
+        if (0.0..self.pixel_width).contains(&px) && (0.0..self.pixel_height).contains(&py) {
+            let c = direction.norm().dot(self.w);
+            let a = self.pixel_width * self.pixel_height;
+            let c2 = c * c;
+            let c4 = c2 * c2;
+            Spectrum::fill(1.0 / (a * c4))
+        } else {
+            Spectrum::black()
+        }
     }
 
     fn probability(&self, _point: Point, direction: Vector) -> Option<f64> {
@@ -243,7 +252,7 @@ mod tests {
         let image_height = 512;
         let camera =
             PinholeCamera::new(origin, direction, field_of_view, image_width, image_height);
-        let d = Vector::new(1.0, 1.0, 1.0);
+        let d = Vector::new(0.0, 0.25, 1.0);
         let c = d.norm().dot(direction);
         let w = image_width as f64;
         let h = image_height as f64;
@@ -262,7 +271,7 @@ mod tests {
         let image_height = 512;
         let camera =
             PinholeCamera::new(origin, direction, field_of_view, image_width, image_height);
-        let r = Vector::new(1.0, 1.0, 1.0);
+        let r = Vector::new(0.0, 0.25, 1.0);
         let c = r.norm().dot(direction);
         let w = image_width as f64;
         let h = image_height as f64;
