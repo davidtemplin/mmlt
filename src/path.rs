@@ -207,13 +207,14 @@ impl<'a> Path<'a> {
         sampler.start_stream(LIGHT_STREAM);
         let light = scene.sample_light(sampler);
         let mut light_interaction = light.sample_interaction(sampler);
-        let ray_direction =
-            sampled_camera_interaction.geometry().point - light_interaction.geometry().point;
+        let ray_direction = (sampled_camera_interaction.geometry().point
+            - light_interaction.geometry().point)
+            .norm();
         let ray = Ray::new(light_interaction.geometry().point, ray_direction);
-        let camera_interaction = scene.intersect(ray).filter(|i| i.is_camera());
-        light_interaction.set_direction(ray_direction);
+        let camera_interaction = scene.intersect(ray).filter(|i| i.is_camera())?;
+        light_interaction.set_direction(-camera_interaction.geometry().direction);
         let mut interactions: VecDeque<Interaction<'a>> = VecDeque::new();
-        interactions.push_back(camera_interaction?);
+        interactions.push_back(camera_interaction);
         interactions.push_back(light_interaction);
         Path::connect(&mut interactions, technique)
     }
