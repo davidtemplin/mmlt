@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::spectrum::Spectrum;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct PixelCoordinates {
     pub x: usize,
     pub y: usize,

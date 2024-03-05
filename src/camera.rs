@@ -1,4 +1,4 @@
-use std::f64::consts::PI;
+use std::{f64::consts::PI, fmt};
 
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +13,7 @@ use crate::{
     vector::{Point, PointConfig, Vector, VectorConfig},
 };
 
-pub trait Camera {
+pub trait Camera: fmt::Debug {
     fn importance(&self, point: Point, direction: Vector) -> Spectrum;
     fn probability(&self, point: Point, direction: Vector) -> Option<f64>;
     fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction;
@@ -21,6 +21,7 @@ pub trait Camera {
     fn id(&self) -> &String;
 }
 
+#[derive(Debug)]
 pub struct PinholeCamera {
     id: String,
     u: Vector,

@@ -1,12 +1,13 @@
-use std::f64::consts::PI;
+use std::{f64::consts::PI, fmt};
 
 use crate::{sampler::Sampler, spectrum::Spectrum, util, vector::Vector};
 
+#[derive(Debug)]
 pub struct Bsdf {
     pub bxdfs: Vec<Box<dyn Bxdf>>,
 }
 
-pub trait Bxdf {
+pub trait Bxdf: fmt::Debug {
     fn evaluate(&self, wo: Vector, wi: Vector) -> Spectrum;
     fn probability(&self, wo: Vector, wi: Vector) -> Option<f64>;
     fn sample_direction(&self, wo: Vector, sampler: &mut dyn Sampler) -> Vector;
@@ -47,6 +48,7 @@ impl Bsdf {
     }
 }
 
+#[derive(Debug)]
 pub struct DiffuseBrdf {
     scale: Spectrum,
     normal: Vector,
@@ -86,6 +88,7 @@ impl Bxdf for DiffuseBrdf {
     }
 }
 
+#[derive(Debug)]
 pub struct SpecularBrdf {
     scale: Spectrum,
     normal: Vector,

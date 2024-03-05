@@ -317,6 +317,7 @@ impl<'a> Path<'a> {
     ) -> Option<Path<'a>> {
         sampler.start_stream(CAMERA_STREAM);
         let camera_interaction = scene.camera.sample_interaction(sampler);
+        println!("camera_interaction = {:?}", camera_interaction);
         let camera_interactions = Path::trace(
             scene,
             sampler,
@@ -558,9 +559,8 @@ impl<'a> Path<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{path::PathType, sampler::test::MockSampler};
-
     use super::Technique;
+    use crate::{path::PathType, sampler::test::MockSampler};
 
     #[test]
     fn test_technique_sample() {

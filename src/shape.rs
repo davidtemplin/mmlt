@@ -1,4 +1,4 @@
-use std::f64::consts::PI;
+use std::{f64::consts::PI, fmt};
 
 use serde::{Deserialize, Serialize};
 
@@ -10,12 +10,13 @@ use crate::{
     vector::{Point, PointConfig, Vector},
 };
 
-pub trait Shape {
+pub trait Shape: fmt::Debug {
     fn area(&self) -> f64;
     fn sample_geometry(&self, sampler: &mut dyn Sampler) -> Geometry;
     fn intersect(&self, ray: Ray) -> Option<Geometry>;
 }
 
+#[derive(Debug)]
 pub struct Sphere {
     center: Point,
     radius: f64,
@@ -77,6 +78,7 @@ impl Shape for Sphere {
     }
 }
 
+#[derive(Debug)]
 pub struct Parallelogram {
     origin: Point,
     a: Vector,

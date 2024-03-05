@@ -1,3 +1,5 @@
+use std::fmt;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -6,10 +8,11 @@ use crate::{
     texture::{Texture, TextureConfig},
 };
 
-pub trait Material {
+pub trait Material: fmt::Debug {
     fn compute_bsdf(&self, geometry: Geometry) -> Bsdf;
 }
 
+#[derive(Debug)]
 pub struct MatteMaterial {
     texture: Box<dyn Texture>,
 }
@@ -33,6 +36,7 @@ impl Material for MatteMaterial {
     }
 }
 
+#[derive(Debug)]
 pub struct GlossyMaterial {
     diffuse_texture: Box<dyn Texture>,
     specular_texture: Box<dyn Texture>,

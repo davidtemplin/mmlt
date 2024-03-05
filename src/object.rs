@@ -1,4 +1,4 @@
-use std::cell::OnceCell;
+use std::{cell::OnceCell, fmt};
 
 use serde::{Deserialize, Serialize};
 
@@ -11,12 +11,13 @@ use crate::{
     shape::{Shape, ShapeConfig},
 };
 
-pub trait Object {
+pub trait Object: fmt::Debug {
     fn intersect(&self, ray: Ray) -> Option<Interaction>;
     fn compute_bsdf(&self, geometry: Geometry) -> Bsdf;
     fn id(&self) -> &String;
 }
 
+#[derive(Debug)]
 pub struct GeometricObject {
     id: String,
     shape: Box<dyn Shape>,

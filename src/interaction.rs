@@ -5,23 +5,27 @@ use crate::{
     object::Object, ray::Ray, sampler::Sampler, spectrum::Spectrum, vector::Vector,
 };
 
+#[derive(Debug)]
 pub struct CameraInteraction<'a> {
     pub camera: &'a (dyn Camera + 'a),
     pub geometry: Geometry,
     pub pixel_coordinates: PixelCoordinates,
 }
 
+#[derive(Debug)]
 pub struct LightInteraction<'a> {
     pub light: &'a (dyn Light + 'a),
     pub geometry: Geometry,
 }
 
+#[derive(Debug)]
 pub struct ObjectInteraction<'a> {
     pub object: &'a (dyn Object + 'a),
     pub geometry: Geometry,
     pub bsdf: OnceCell<Bsdf>,
 }
 
+#[derive(Debug)]
 pub enum Interaction<'a> {
     Camera(CameraInteraction<'a>),
     Light(LightInteraction<'a>),

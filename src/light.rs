@@ -1,4 +1,4 @@
-use std::f64::consts::PI;
+use std::{f64::consts::PI, fmt};
 
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +13,7 @@ use crate::{
     vector::{Point, Vector},
 };
 
-pub trait Light {
+pub trait Light: fmt::Debug {
     fn radiance(&self, point: Point, normal: Vector, direction: Vector) -> Spectrum;
     fn probability(&self, point: Point, normal: Vector, direction: Vector) -> Option<f64>;
     fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction;
@@ -21,6 +21,7 @@ pub trait Light {
     fn id(&self) -> &String;
 }
 
+#[derive(Debug)]
 pub struct DiffuseAreaLight {
     id: String,
     shape: Box<dyn Shape>,

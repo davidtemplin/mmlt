@@ -1,3 +1,5 @@
+use core::fmt;
+
 use crate::{
     geometry::Geometry,
     spectrum::{Spectrum, SpectrumConfig},
@@ -5,10 +7,11 @@ use crate::{
 
 use serde::{Deserialize, Serialize};
 
-pub trait Texture {
+pub trait Texture: fmt::Debug {
     fn evaluate(&self, geometry: Geometry) -> Spectrum;
 }
 
+#[derive(Debug)]
 pub struct ConstantTexture {
     value: Spectrum,
 }
