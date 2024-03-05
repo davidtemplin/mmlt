@@ -130,6 +130,10 @@ impl Shape for Parallelogram {
 
         let t = normal.dot(self.origin - ray.origin) / nd;
 
+        if t <= 0.0 {
+            return None;
+        }
+
         let point = ray.origin + ray.direction * t;
 
         let p = point - self.origin;

@@ -21,8 +21,8 @@ lights:
     shape:
       type: parallelogram
       origin: { x: 30.0, y: 100.0, z: 30.0 }
-      a: { x: 0.0, y: 0.0, z: 40.0 }
-      b: { x: 40.0, y: 0.0, z: 0.0 }
+      a: { x: 40.0, y: 0.0, z: 0.0 }
+      b: { x: 0.0, y: 0.0, z: 40.0 }
     spectrum: { r: 100.0, g: 100.0, b: 100.0 }
 
 objects:
