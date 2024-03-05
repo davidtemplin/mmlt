@@ -108,7 +108,7 @@ impl Shape for Parallelogram {
     fn sample_geometry(&self, sampler: &mut dyn Sampler) -> Geometry {
         let a = sampler.sample(0.0..1.0);
         let b = sampler.sample(0.0..1.0);
-        let point = self.a * a + self.b * b;
+        let point = self.origin + self.a * a + self.b * b;
         let normal = self.a.cross(self.b).norm();
         Geometry {
             point,
