@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use crate::{
     geometry::Geometry,
     image::PixelCoordinates,
@@ -207,7 +209,9 @@ impl<'a> Path<'a> {
         let ray = Ray::new(light_interaction.geometry().point, ray_direction);
         let camera_interaction = scene.intersect(ray).filter(|i| i.is_camera());
         light_interaction.set_direction(ray_direction);
-        let mut interactions = vec![camera_interaction?, light_interaction];
+        let mut interactions: VecDeque<Interaction<'a>> = VecDeque::new();
+        interactions.push_back(camera_interaction?);
+        interactions.push_back(light_interaction);
         Path::connect(&mut interactions, technique)
     }
 
@@ -219,8 +223,14 @@ impl<'a> Path<'a> {
         sampler.start_stream(LIGHT_STREAM);
         let light = scene.sample_light(sampler);
         let light_interaction = light.sample_interaction(sampler);
-        let mut interactions = Path::trace(scene, sampler, light_interaction, technique.light)?;
-        interactions.last().filter(|i| i.is_camera())?;
+        let mut interactions = Path::trace(
+            scene,
+            sampler,
+            light_interaction,
+            technique.light,
+            Direction::Reverse,
+        )?;
+        interactions.front().filter(|i| i.is_camera())?;
         Path::connect(&mut interactions, technique)
     }
 
@@ -231,8 +241,14 @@ impl<'a> Path<'a> {
     ) -> Option<Path<'a>> {
         sampler.start_stream(CAMERA_STREAM);
         let camera_interaction = scene.camera.sample_interaction(sampler);
-        let mut interactions = Path::trace(scene, sampler, camera_interaction, technique.camera)?;
-        interactions.last().filter(|i| i.is_light())?;
+        let mut interactions = Path::trace(
+            scene,
+            sampler,
+            camera_interaction,
+            technique.camera,
+            Direction::Forward,
+        )?;
+        interactions.back().filter(|i| i.is_light())?;
         Path::connect(&mut interactions, technique)
     }
 
@@ -244,8 +260,14 @@ impl<'a> Path<'a> {
         sampler.start_stream(LIGHT_STREAM);
         let light = scene.sample_light(sampler);
         let light_interaction = light.sample_interaction(sampler);
-        let mut interactions = Path::trace(scene, sampler, light_interaction, technique.light)?;
-        let last = interactions.last().filter(|i| i.is_object())?;
+        let mut interactions = Path::trace(
+            scene,
+            sampler,
+            light_interaction,
+            technique.light,
+            Direction::Reverse,
+        )?;
+        let last = interactions.front().filter(|i| i.is_object())?;
         sampler.start_stream(CAMERA_STREAM);
         let sampled_camera_interaction = scene.camera.sample_interaction(sampler);
         let ray = Ray::new(
@@ -253,7 +275,7 @@ impl<'a> Path<'a> {
             sampled_camera_interaction.geometry().point - last.geometry().point,
         );
         let camera_interaction = scene.intersect(ray).filter(|i| i.is_camera())?;
-        interactions.push(camera_interaction);
+        interactions.push_back(camera_interaction);
         Path::connect(&mut interactions, technique)
     }
 
@@ -264,8 +286,14 @@ impl<'a> Path<'a> {
     ) -> Option<Path<'a>> {
         sampler.start_stream(CAMERA_STREAM);
         let camera_interaction = scene.camera.sample_interaction(sampler);
-        let mut interactions = Path::trace(scene, sampler, camera_interaction, technique.camera)?;
-        let last = interactions.last().filter(|i| i.is_object())?;
+        let mut interactions = Path::trace(
+            scene,
+            sampler,
+            camera_interaction,
+            technique.camera,
+            Direction::Forward,
+        )?;
+        let last = interactions.back().filter(|i| i.is_object())?;
         sampler.start_stream(LIGHT_STREAM);
         let light = scene.sample_light(sampler);
         let sampled_light_interaction = light.sample_interaction(sampler);
@@ -274,7 +302,7 @@ impl<'a> Path<'a> {
             sampled_light_interaction.geometry().point - last.geometry().point,
         );
         let light_interaction = scene.intersect(ray).filter(|i| i.is_light())?;
-        interactions.push(light_interaction);
+        interactions.push_back(light_interaction);
         Path::connect(&mut interactions, technique)
     }
 
@@ -285,21 +313,30 @@ impl<'a> Path<'a> {
     ) -> Option<Path<'a>> {
         sampler.start_stream(CAMERA_STREAM);
         let camera_interaction = scene.camera.sample_interaction(sampler);
-        let camera_interactions =
-            Path::trace(scene, sampler, camera_interaction, technique.camera)?;
+        let camera_interactions = Path::trace(
+            scene,
+            sampler,
+            camera_interaction,
+            technique.camera,
+            Direction::Forward,
+        )?;
         sampler.start_stream(LIGHT_STREAM);
         let light = scene.sample_light(sampler);
         let light_interaction = light.sample_interaction(sampler);
-        let mut light_interactions =
-            Path::trace(scene, sampler, light_interaction, technique.light)?;
-        let camera_last = camera_interactions.last().filter(|i| i.is_object())?;
-        let light_last = light_interactions.last().filter(|i| i.is_object())?;
+        let light_interactions = Path::trace(
+            scene,
+            sampler,
+            light_interaction,
+            technique.light,
+            Direction::Reverse,
+        )?;
+        let camera_last = camera_interactions.back().filter(|i| i.is_object())?;
+        let light_last = light_interactions.front().filter(|i| i.is_object())?;
         let ray = Ray::new(
             camera_last.geometry().point,
             light_last.geometry().point - camera_last.geometry().point,
         );
         scene.intersect(ray).filter(|i| i.id() == light_last.id())?;
-        light_interactions.reverse();
         let mut interactions = camera_interactions;
         interactions.extend(light_interactions);
         Path::connect(&mut interactions, technique)
@@ -310,19 +347,29 @@ impl<'a> Path<'a> {
         sampler: &mut impl Sampler,
         interaction: Interaction<'a>,
         length: usize,
-    ) -> Option<Vec<Interaction<'a>>> {
-        let mut stack: Vec<Interaction<'a>> = Vec::new();
+        direction: Direction,
+    ) -> Option<VecDeque<Interaction<'a>>> {
+        let mut stack: VecDeque<Interaction<'a>> = VecDeque::new();
         let mut ray = interaction.generate_ray(sampler)?;
-        stack.push(interaction);
+        match direction {
+            Direction::Forward => stack.push_back(interaction),
+            Direction::Reverse => stack.push_front(interaction),
+        };
         for _ in 0..length {
             let interaction = scene.intersect(ray)?;
             ray = interaction.generate_ray(sampler)?;
-            stack.push(interaction);
+            match direction {
+                Direction::Forward => stack.push_back(interaction),
+                Direction::Reverse => stack.push_front(interaction),
+            };
         }
         Some(stack)
     }
 
-    fn connect(interactions: &mut Vec<Interaction<'a>>, technique: Technique) -> Option<Path<'a>> {
+    fn connect(
+        interactions: &mut VecDeque<Interaction<'a>>,
+        technique: Technique,
+    ) -> Option<Path<'a>> {
         let mut vertices: Vec<Vertex<'a>> = Vec::new();
 
         let mut previous_geometry: Option<Geometry> = None;
@@ -332,7 +379,7 @@ impl<'a> Path<'a> {
         let mut pixel_coordinates: Option<PixelCoordinates> = None;
 
         while interactions.len() > 0 {
-            let interaction = interactions.remove(0); // TODO: use VecDeque
+            let interaction = interactions.pop_front()?;
             let current_geometry = interaction.geometry();
             let next_geometry = interactions.get(0).map(Interaction::geometry);
             match interaction {
