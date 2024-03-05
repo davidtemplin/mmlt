@@ -48,7 +48,7 @@ impl Sample {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum MutationType {
     LargeStep,
     SmallStep,
@@ -82,7 +82,7 @@ impl MmltSampler {
     }
 
     pub fn accept(&mut self) {
-        if let MutationType::LargeStep = self.mutation_type {
+        if self.mutation_type == MutationType::LargeStep {
             self.large_step_at = self.iteration;
         }
     }

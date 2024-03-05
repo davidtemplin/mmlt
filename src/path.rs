@@ -18,6 +18,7 @@ pub struct Path<'a> {
     pixel_coordinates: PixelCoordinates,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum PathType {
     Camera,
     Light,
@@ -119,6 +120,10 @@ impl Technique {
         let r = sampler.sample(0.0..end);
         let camera = r.floor() as usize;
         let light = path_length - camera;
+        Technique::new(camera, light)
+    }
+
+    pub fn new(camera: usize, light: usize) -> Technique {
         Technique { camera, light }
     }
 
@@ -172,9 +177,7 @@ impl<'a> Path<'a> {
         path_length: usize,
     ) -> Option<Path<'a>> {
         sampler.start_stream(TECHNIQUE_STREAM);
-
         let technique = Technique::sample(path_length, sampler);
-
         if technique.camera == 0 {
             Path::connect_full_light_path(scene, sampler, technique)
         } else if technique.camera == 1 {
@@ -554,7 +557,7 @@ impl<'a> Path<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::sampler::test::MockSampler;
+    use crate::{path::PathType, sampler::test::MockSampler};
 
     use super::Technique;
 
@@ -576,5 +579,14 @@ mod tests {
         let technique = Technique::sample(2, &mut sampler);
         assert_eq!(technique.camera, 2);
         assert_eq!(technique.light, 0);
+    }
+
+    #[test]
+    fn test_technique_path_type() {
+        let technique = Technique::new(2, 2);
+        assert_eq!(technique.path_type(0), PathType::Camera);
+        assert_eq!(technique.path_type(1), PathType::Camera);
+        assert_eq!(technique.path_type(2), PathType::Light);
+        assert_eq!(technique.path_type(3), PathType::Light);
     }
 }
