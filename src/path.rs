@@ -317,7 +317,6 @@ impl<'a> Path<'a> {
     ) -> Option<Path<'a>> {
         sampler.start_stream(CAMERA_STREAM);
         let camera_interaction = scene.camera.sample_interaction(sampler);
-        println!("camera_interaction = {:?}", camera_interaction);
         let camera_interactions = Path::trace(
             scene,
             sampler,
