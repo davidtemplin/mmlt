@@ -34,20 +34,11 @@ pub struct PinholeCamera {
 
 impl Camera for PinholeCamera {
     fn importance(&self, _point: Point, direction: Vector) -> Spectrum {
-        let d = direction.norm();
-        let screen_center = self.origin + (self.w * self.distance);
-        let screen_position = self.origin + d * (self.distance / d.dot(self.w)) - screen_center;
-        let px = self.u.dot(screen_position) + self.pixel_width * 0.5;
-        let py = -self.v.dot(screen_position) + self.pixel_height * 0.5;
-        if (0.0..self.pixel_width).contains(&px) && (0.0..self.pixel_height).contains(&py) {
-            let c = direction.norm().dot(self.w);
-            let a = self.pixel_width * self.pixel_height;
-            let c2 = c * c;
-            let c4 = c2 * c2;
-            Spectrum::fill(1.0 / (a * c4))
-        } else {
-            Spectrum::black()
-        }
+        let c = direction.norm().dot(self.w);
+        let a = self.pixel_width * self.pixel_height;
+        let c2 = c * c;
+        let c4 = c2 * c2;
+        Spectrum::fill(1.0 / (a * c4))
     }
 
     fn probability(&self, _point: Point, direction: Vector) -> Option<f64> {
@@ -79,8 +70,41 @@ impl Camera for PinholeCamera {
         Interaction::Camera(camera_interaction)
     }
 
-    fn intersect(&self, _ray: Ray) -> Option<Interaction> {
-        None
+    fn intersect(&self, ray: Ray) -> Option<Interaction> {
+        let o = self.origin - ray.origin;
+        let t = if ray.direction.x != 0.0 && o.x != 0.0 {
+            o.x / ray.direction.x
+        } else if ray.direction.y != 0.0 && o.y != 0.0 {
+            o.y / ray.direction.y
+        } else if ray.direction.z != 0.0 && o.z != 0.0 {
+            o.z / ray.direction.z
+        } else {
+            0.0
+        };
+        let i = ray.origin + t * ray.direction;
+        if (i - self.origin).len() > 1e-4 {
+            return None;
+        }
+        let d = (ray.origin - self.origin).norm();
+        let screen_center = self.origin + (self.w * self.distance);
+        let screen_position = self.origin + d * (self.distance / d.dot(self.w)) - screen_center;
+        let px = self.u.dot(screen_position) + self.pixel_width * 0.5;
+        let py = -self.v.dot(screen_position) + self.pixel_height * 0.5;
+        if (0.0..self.pixel_width).contains(&px) && (0.0..self.pixel_height).contains(&py) {
+            let camera_interaction = CameraInteraction {
+                camera: self,
+                geometry: Geometry {
+                    point: self.origin,
+                    direction: d,
+                    normal: self.w,
+                },
+                pixel_coordinates: PixelCoordinates::new(px.round() as usize, py.round() as usize),
+            };
+            let interaction = Interaction::Camera(camera_interaction);
+            Some(interaction)
+        } else {
+            None
+        }
     }
 
     fn id(&self) -> &String {
@@ -176,6 +200,7 @@ mod tests {
     use crate::{
         camera::{AngleUnitConfig, Camera, FieldOfViewConfig, PinholeCameraConfig},
         interaction::Interaction,
+        ray::Ray,
         sampler::test::MockSampler,
         spectrum::Spectrum,
         vector::{Point, PointConfig, Vector, VectorConfig},
@@ -306,6 +331,34 @@ mod tests {
                 assert_eq!(camera_interaction.geometry.normal, direction);
                 assert_eq!(camera_interaction.geometry.point, distance * origin);
                 assert_eq!(camera_interaction.geometry.direction, direction);
+            }
+            _ => panic!(),
+        }
+    }
+
+    #[test]
+    fn test_pinhole_camera_intersect() {
+        let origin = Point::new(0.0, 0.0, 0.0);
+        let direction = Vector::new(0.0, 0.0, 1.0);
+        let field_of_view = 60.0 * PI / 180.0;
+        let image_width = 512;
+        let image_height = 512;
+        let camera =
+            PinholeCamera::new(origin, direction, field_of_view, image_width, image_height);
+        let ray_origin = Point::new(0.0, 0.0, 10.0);
+        let ray_direction = Vector::new(0.0, 0.0, -10.0).norm();
+        let ray = Ray::new(ray_origin, ray_direction);
+        let interaction = camera.intersect(ray);
+        match interaction {
+            Some(Interaction::Camera(camera_interaction)) => {
+                assert_eq!(camera_interaction.pixel_coordinates.x, 256);
+                assert_eq!(camera_interaction.pixel_coordinates.y, 256);
+                assert_eq!(camera_interaction.geometry.normal, direction);
+                assert_eq!(
+                    camera_interaction.geometry.point,
+                    camera.distance * camera.origin
+                );
+                assert_eq!(camera_interaction.geometry.direction, -ray_direction);
             }
             _ => panic!(),
         }
