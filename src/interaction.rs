@@ -57,6 +57,20 @@ impl<'a> ObjectInteraction<'a> {
 }
 
 impl<'a> Interaction<'a> {
+    pub fn initial_ray(&self) -> Option<Ray> {
+        match self {
+            Interaction::Camera(i) => {
+                let ray = Ray::new(i.geometry.point, i.geometry.direction);
+                Some(ray)
+            }
+            Interaction::Light(i) => {
+                let ray = Ray::new(i.geometry.point, i.geometry.direction);
+                Some(ray)
+            }
+            _ => None,
+        }
+    }
+
     pub fn generate_ray(&self, sampler: &mut dyn Sampler) -> Option<Ray> {
         match self {
             Interaction::Camera(_) => None,

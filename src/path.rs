@@ -207,9 +207,8 @@ impl<'a> Path<'a> {
         sampler.start_stream(LIGHT_STREAM);
         let light = scene.sample_light(sampler);
         let mut light_interaction = light.sample_interaction(sampler);
-        let ray_direction = (sampled_camera_interaction.geometry().point
-            - light_interaction.geometry().point)
-            .norm();
+        let ray_direction =
+            sampled_camera_interaction.geometry().point - light_interaction.geometry().point;
         let ray = Ray::new(light_interaction.geometry().point, ray_direction);
         let camera_interaction = scene.intersect(ray).filter(|i| i.is_camera())?;
         light_interaction.set_direction(-camera_interaction.geometry().direction);
@@ -354,7 +353,7 @@ impl<'a> Path<'a> {
         direction: Direction,
     ) -> Option<VecDeque<Interaction<'a>>> {
         let mut stack: VecDeque<Interaction<'a>> = VecDeque::new();
-        let mut ray = interaction.generate_ray(sampler)?;
+        let mut ray = interaction.initial_ray()?;
         match direction {
             Direction::Forward => stack.push_back(interaction),
             Direction::Reverse => stack.push_front(interaction),
