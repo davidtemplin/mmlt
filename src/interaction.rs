@@ -107,4 +107,8 @@ impl<'a> Interaction<'a> {
             _ => false,
         }
     }
+
+    pub fn set_direction(&mut self, direction: Vector) {
+        self.geometry().set_direction(direction);
+    }
 }

@@ -10,6 +10,12 @@ pub struct Geometry {
     pub direction: Vector,
 }
 
+impl Geometry {
+    pub fn set_direction(&mut self, direction: Vector) {
+        self.direction = direction;
+    }
+}
+
 impl PartialEq for Geometry {
     fn eq(&self, other: &Self) -> bool {
         self.point == other.point

@@ -198,11 +198,16 @@ impl<'a> Path<'a> {
         technique: Technique,
     ) -> Option<Path<'a>> {
         sampler.start_stream(CAMERA_STREAM);
-        let camera_interaction = scene.camera.sample_interaction(sampler);
+        let sampled_camera_interaction = scene.camera.sample_interaction(sampler);
         sampler.start_stream(LIGHT_STREAM);
         let light = scene.sample_light(sampler);
-        let light_interaction = light.sample_interaction(sampler);
-        let mut interactions = vec![camera_interaction, light_interaction];
+        let mut light_interaction = light.sample_interaction(sampler);
+        let ray_direction =
+            sampled_camera_interaction.geometry().point - light_interaction.geometry().point;
+        let ray = Ray::new(light_interaction.geometry().point, ray_direction);
+        let camera_interaction = scene.intersect(ray).filter(|i| i.is_camera());
+        light_interaction.set_direction(ray_direction);
+        let mut interactions = vec![camera_interaction?, light_interaction];
         Path::connect(&mut interactions, technique)
     }
 
@@ -242,13 +247,13 @@ impl<'a> Path<'a> {
         let mut interactions = Path::trace(scene, sampler, light_interaction, technique.light)?;
         let last = interactions.last().filter(|i| i.is_object())?;
         sampler.start_stream(CAMERA_STREAM);
-        let camera_interaction = scene.camera.sample_interaction(sampler);
+        let sampled_camera_interaction = scene.camera.sample_interaction(sampler);
         let ray = Ray::new(
             last.geometry().point,
-            camera_interaction.geometry().point - last.geometry().point,
+            sampled_camera_interaction.geometry().point - last.geometry().point,
         );
-        let interaction = scene.intersect(ray).filter(|i| i.is_camera())?;
-        interactions.push(interaction);
+        let camera_interaction = scene.intersect(ray).filter(|i| i.is_camera())?;
+        interactions.push(camera_interaction);
         Path::connect(&mut interactions, technique)
     }
 
@@ -263,13 +268,13 @@ impl<'a> Path<'a> {
         let last = interactions.last().filter(|i| i.is_object())?;
         sampler.start_stream(LIGHT_STREAM);
         let light = scene.sample_light(sampler);
-        let light_interaction = light.sample_interaction(sampler);
+        let sampled_light_interaction = light.sample_interaction(sampler);
         let ray = Ray::new(
             last.geometry().point,
-            light_interaction.geometry().point - last.geometry().point,
+            sampled_light_interaction.geometry().point - last.geometry().point,
         );
-        let interaction = scene.intersect(ray).filter(|i| i.is_light())?;
-        interactions.push(interaction);
+        let light_interaction = scene.intersect(ray).filter(|i| i.is_light())?;
+        interactions.push(light_interaction);
         Path::connect(&mut interactions, technique)
     }
 
@@ -291,13 +296,11 @@ impl<'a> Path<'a> {
         let light_last = light_interactions.last().filter(|i| i.is_object())?;
         let ray = Ray::new(
             camera_last.geometry().point,
-            light_last.geometry().point - light_last.geometry().point,
+            light_last.geometry().point - camera_last.geometry().point,
         );
-        let id = light_last.id();
-        let interaction = scene.intersect(ray).filter(|i| i.id() == id)?;
+        scene.intersect(ray).filter(|i| i.id() == light_last.id())?;
         light_interactions.reverse();
         let mut interactions = camera_interactions;
-        interactions.push(interaction);
         interactions.extend(light_interactions);
         Path::connect(&mut interactions, technique)
     }
