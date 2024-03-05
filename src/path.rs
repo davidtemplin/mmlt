@@ -358,7 +358,7 @@ impl<'a> Path<'a> {
             Direction::Forward => stack.push_back(interaction),
             Direction::Reverse => stack.push_front(interaction),
         };
-        for _ in 0..length {
+        for _ in 0..(length - 1) {
             let interaction = scene.intersect(ray)?;
             ray = interaction.generate_ray(sampler)?;
             match direction {
