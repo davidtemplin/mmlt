@@ -147,6 +147,8 @@ impl Sampler for MmltSampler {
 
 #[cfg(test)]
 pub mod test {
+    use rand::{thread_rng, Rng};
+
     use super::Sampler;
     use std::{collections::VecDeque, ops::Range};
 
@@ -172,7 +174,10 @@ pub mod test {
         }
 
         fn sample(&mut self, range: Range<f64>) -> f64 {
-            let r = self.samples.pop_front().unwrap_or(0.0);
+            let r = self
+                .samples
+                .pop_front()
+                .unwrap_or_else(|| thread_rng().gen_range(0.0..1.0));
             r * (range.end - range.start) + range.start
         }
     }
