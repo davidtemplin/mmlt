@@ -30,6 +30,10 @@ impl RgbSpectrum {
         Spectrum::fill(0.0)
     }
 
+    pub fn is_black(&self) -> bool {
+        self.r == 0.0 && self.g == 0.0 && self.b == 0.0
+    }
+
     pub fn fill(v: f64) -> RgbSpectrum {
         RgbSpectrum { r: v, g: v, b: v }
     }
@@ -135,6 +139,12 @@ mod tests {
         assert_eq!(spectrum.r, 0.0);
         assert_eq!(spectrum.g, 0.0);
         assert_eq!(spectrum.b, 0.0);
+    }
+
+    #[test]
+    fn test_rgb_spectrum_is_black() {
+        let spectrum = RgbSpectrum::black();
+        assert!(spectrum.is_black());
     }
 
     #[test]

@@ -501,13 +501,24 @@ impl<'a> Path<'a> {
         Some(path)
     }
 
-    pub fn contribution(&self) -> Contribution {
-        let c = self.throughput() * self.weight() / self.probability();
-        Contribution {
+    pub fn contribution(&self) -> Option<Contribution> {
+        let p = self.probability();
+        if p == 0.0 {
+            return None;
+        }
+
+        let c = self.throughput() * self.weight() / p;
+        if c.is_black() {
+            return None;
+        }
+
+        let contribution = Contribution {
             scalar: c.luminance(),
             spectrum: c,
             pixel_coordinates: self.pixel_coordinates,
-        }
+        };
+
+        Some(contribution)
     }
 
     pub fn throughput(&self) -> Spectrum {
