@@ -10,7 +10,7 @@ image:
 camera:
   type: pinhole
   origin: { x: 50.0, y: 50.0, z: 1.0 }
-  direction: { x: 0.0, y: 0.0, z: 1.0 }
+  look_at: { x: 50.0, y: 50.0, z: 50.0 }
   field_of_view:
     value: 60.0
     unit: degrees
