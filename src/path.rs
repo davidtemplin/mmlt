@@ -579,8 +579,16 @@ impl<'a> Path<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{PathType, Technique};
-    use crate::sampler::test::MockSampler;
+    use std::f64::consts::PI;
+
+    use super::{CameraVertex, PathType, Technique, Vertex};
+    use crate::{
+        camera::{Camera, PinholeCamera},
+        interaction::Interaction,
+        sampler::test::MockSampler,
+        util,
+        vector::{Point, Vector},
+    };
 
     #[test]
     fn test_technique_sample() {
@@ -609,5 +617,72 @@ mod tests {
         assert_eq!(technique.path_type(1), PathType::Camera);
         assert_eq!(technique.path_type(2), PathType::Light);
         assert_eq!(technique.path_type(3), PathType::Light);
+    }
+
+    #[test]
+    fn test_camera_vertex_throughput() {
+        let origin = Point::new(50.0, 50.0, 1.0);
+        let look_at = Point::new(50.0, 50.0, 50.0);
+        let field_of_view = 60.0 * (PI / 180.0);
+        let image_width = 512;
+        let image_height = 512;
+        let camera = PinholeCamera::new(origin, look_at, field_of_view, image_width, image_height);
+        let mut sampler = MockSampler::new();
+        sampler.add(0.75);
+        sampler.add(0.75);
+        if let Interaction::Camera(camera_interaction) = camera.sample_interaction(&mut sampler) {
+            let wi = camera_interaction.geometry.direction * 10.0;
+            let next_normal = Vector::new(0.25, 1.0, -1.0);
+            let direction_to_area = util::direction_to_area(wi, next_normal);
+            let geometry_term =
+                util::geometry_term(wi, camera_interaction.geometry.normal, next_normal);
+            let camera_vertex = CameraVertex {
+                interaction: camera_interaction,
+                wi,
+                direction_to_area,
+                geometry_term,
+            };
+            let vertex = Vertex::Camera(camera_vertex);
+            let throughput = vertex.throughput();
+            assert_eq!(throughput, camera.importance(origin, wi) * geometry_term);
+        } else {
+            panic!("expected camera interaction");
+        }
+    }
+
+    #[test]
+    fn test_camera_vertex_probability() {
+        let origin = Point::new(50.0, 50.0, 1.0);
+        let look_at = Point::new(50.0, 50.0, 50.0);
+        let field_of_view = 60.0 * (PI / 180.0);
+        let image_width = 512;
+        let image_height = 512;
+        let camera = PinholeCamera::new(origin, look_at, field_of_view, image_width, image_height);
+        let mut sampler = MockSampler::new();
+        sampler.add(0.75);
+        sampler.add(0.75);
+        if let Interaction::Camera(camera_interaction) = camera.sample_interaction(&mut sampler) {
+            let wi = camera_interaction.geometry.direction * 10.0;
+            let next_normal = Vector::new(0.25, 1.0, -1.0);
+            let direction_to_area = util::direction_to_area(wi, next_normal);
+            let geometry_term =
+                util::geometry_term(wi, camera_interaction.geometry.normal, next_normal);
+            let camera_vertex = CameraVertex {
+                interaction: camera_interaction,
+                wi,
+                direction_to_area,
+                geometry_term,
+            };
+            let vertex = Vertex::Camera(camera_vertex);
+            let probability = vertex.probability(PathType::Camera);
+            assert_eq!(
+                probability,
+                camera
+                    .probability(origin, wi)
+                    .map(|p| p * direction_to_area)
+            );
+        } else {
+            panic!("expected camera interaction");
+        }
     }
 }
