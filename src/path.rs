@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 
 use crate::{
+    geometry::Geometry,
     image::PixelCoordinates,
     interaction::Interaction,
     ray::Ray,
@@ -63,7 +64,7 @@ enum Direction {
     Reverse,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Contribution {
     pub scalar: f64,
     pub spectrum: Spectrum,
@@ -291,8 +292,8 @@ impl<'a> Path {
         let mut vertices: Vec<Vertex> = Vec::new();
         let mut pixel_coordinates: Option<PixelCoordinates> = None;
         let mut area_probability: Option<f64> = None;
+        let mut previous_geometry: Option<Geometry> = None;
         for (index, interaction) in interactions.iter().enumerate() {
-            let previous_geometry = interactions.get(index - 1).map(Interaction::geometry);
             let next_geometry = interactions.get(index + 1).map(Interaction::geometry);
             match interaction {
                 Interaction::Camera(camera_interaction) => {
@@ -401,6 +402,8 @@ impl<'a> Path {
                     }
                 }
             }
+
+            previous_geometry = Some(interaction.geometry());
         }
 
         let path = Path {
