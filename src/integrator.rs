@@ -79,15 +79,14 @@ impl Integrator for MmltIntegrator {
                             MutationType::SmallStep => 0.0,
                         };
                         let weight = (k as f64 + 2.0) / pdf.value(k) * (a + step_factor)
-                            / (proposal_contribution.scalar / b[k]
-                                + sampler.large_step_probability);
+                            / (proposal_contribution.scalar / b[k] + sampler.large_step_pdf);
                         let spectrum = proposal_contribution.spectrum * weight;
                         image.contribute(spectrum, proposal_contribution.pixel_coordinates);
                     }
 
                     if current_contribution.scalar > 0.0 {
                         let weight = (k as f64 + 2.0) / pdf.value(k) * (1.0 - a)
-                            / (current_contribution.scalar / b[k] + sampler.large_step_probability);
+                            / (current_contribution.scalar / b[k] + sampler.large_step_pdf);
                         let spectrum = current_contribution.spectrum * weight;
                         image.contribute(spectrum, current_contribution.pixel_coordinates);
                     }

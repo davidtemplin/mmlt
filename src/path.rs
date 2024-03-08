@@ -27,8 +27,8 @@ pub enum PathType {
 #[derive(Debug)]
 pub struct Vertex {
     throughput: Spectrum,
-    forward_probability: Option<f64>,
-    reverse_probability: Option<f64>,
+    forward_pdf: Option<f64>,
+    reverse_pdf: Option<f64>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -291,7 +291,7 @@ impl<'a> Path {
     fn connect(interactions: &mut VecDeque<Interaction>, technique: Technique) -> Option<Path> {
         let mut vertices: Vec<Vertex> = Vec::new();
         let mut pixel_coordinates: Option<PixelCoordinates> = None;
-        let mut area_probability: Option<f64> = None;
+        let mut area_pdf: Option<f64> = None;
         let mut previous_geometry: Option<Geometry> = None;
         for (index, interaction) in interactions.iter().enumerate() {
             let next_geometry = interactions.get(index + 1).map(Interaction::geometry);
@@ -305,22 +305,20 @@ impl<'a> Path {
                     let next_normal = next_geometry?.normal;
                     let geometry_term = util::geometry_term(direction, normal, next_normal);
                     let throughput = importance * geometry_term;
-                    let positional_probability =
-                        camera_interaction.camera.positional_probability(point);
-                    let directional_probability =
-                        camera_interaction.camera.directional_probability(direction);
-                    area_probability = directional_probability
+                    let positional_pdf = camera_interaction.camera.positional_pdf(point);
+                    let directional_pdf = camera_interaction.camera.directional_pdf(direction);
+                    area_pdf = directional_pdf
                         .map(|p| p * util::direction_to_area(direction, next_normal));
                     let vertex = match technique.path_type(index) {
                         PathType::Camera => Vertex {
                             throughput,
-                            forward_probability: positional_probability,
-                            reverse_probability: None,
+                            forward_pdf: positional_pdf,
+                            reverse_pdf: None,
                         },
                         PathType::Light => Vertex {
                             throughput,
-                            forward_probability: None,
-                            reverse_probability: positional_probability,
+                            forward_pdf: None,
+                            reverse_pdf: positional_pdf,
                         },
                     };
                     vertices.push(vertex);
@@ -330,37 +328,35 @@ impl<'a> Path {
                     let normal = light_interaction.geometry.normal;
                     let direction = previous_geometry?.point - point;
                     let throughput = light_interaction.light.radiance(point, normal, direction);
-                    let sampling_probability = light_interaction.light.sampling_probability();
-                    let positional_probability =
-                        light_interaction.light.positional_probability(point);
-                    let directional_probability = light_interaction
-                        .light
-                        .directional_probability(normal, direction);
+                    let sampling_pdf = light_interaction.light.sampling_pdf();
+                    let positional_pdf = light_interaction.light.positional_pdf(point);
+                    let directional_pdf =
+                        light_interaction.light.directional_pdf(normal, direction);
                     let vertex = match technique.path_type(index) {
                         PathType::Camera => Vertex {
                             throughput,
-                            forward_probability: area_probability,
-                            reverse_probability: sampling_probability
-                                .and_then(|p1| positional_probability.map(|p2| p1 * p2)),
+                            forward_pdf: area_pdf,
+                            reverse_pdf: sampling_pdf
+                                .and_then(|p1| positional_pdf.map(|p2| p1 * p2)),
                         },
                         PathType::Light => Vertex {
                             throughput,
-                            forward_probability: sampling_probability
-                                .and_then(|p1| positional_probability.map(|p2| p1 * p2)),
-                            reverse_probability: area_probability,
+                            forward_pdf: sampling_pdf
+                                .and_then(|p1| positional_pdf.map(|p2| p1 * p2)),
+                            reverse_pdf: area_pdf,
                         },
                     };
                     vertices.push(vertex);
                     let previous_vertex = &mut vertices[index - 1];
                     let previous_normal = previous_geometry?.normal;
                     let direction_to_area = util::direction_to_area(direction, previous_normal);
-                    area_probability = directional_probability.map(|p| p * direction_to_area);
+                    area_pdf = directional_pdf.map(|p| p * direction_to_area);
                     match technique.path_type(index - 1) {
                         PathType::Camera => {
-                            previous_vertex.reverse_probability = area_probability;
+                            previous_vertex.reverse_pdf = area_pdf;
                         }
                         PathType::Light => {
-                            previous_vertex.forward_probability = area_probability;
+                            previous_vertex.forward_pdf = area_pdf;
                         }
                     }
                 }
@@ -373,31 +369,31 @@ impl<'a> Path {
                             let throughput = object_interaction.reflectance(wo, wi);
                             Vertex {
                                 throughput,
-                                forward_probability: area_probability,
-                                reverse_probability: None,
+                                forward_pdf: area_pdf,
+                                reverse_pdf: None,
                             }
                         }
                         PathType::Light => {
                             let throughput = object_interaction.reflectance(wi, wo);
                             Vertex {
                                 throughput,
-                                forward_probability: None,
-                                reverse_probability: area_probability,
+                                forward_pdf: None,
+                                reverse_pdf: area_pdf,
                             }
                         }
                     };
                     vertices.push(vertex);
                     let previous_vertex = &mut vertices[index - 1];
-                    let directional_probability = object_interaction.probability(wo, wi);
+                    let directional_pdf = object_interaction.pdf(wo, wi);
                     let normal = object_interaction.geometry.normal;
                     let direction_to_area = util::direction_to_area(wo, normal);
-                    area_probability = directional_probability.map(|p| p * direction_to_area);
+                    area_pdf = directional_pdf.map(|p| p * direction_to_area);
                     match technique.path_type(index - 1) {
                         PathType::Camera => {
-                            previous_vertex.reverse_probability = area_probability;
+                            previous_vertex.reverse_pdf = area_pdf;
                         }
                         PathType::Light => {
-                            previous_vertex.forward_probability = area_probability;
+                            previous_vertex.forward_pdf = area_pdf;
                         }
                     }
                 }
@@ -416,7 +412,7 @@ impl<'a> Path {
     }
 
     pub fn contribution(&self) -> Option<Contribution> {
-        let p = self.probability();
+        let p = self.pdf();
         if p == 0.0 {
             return None;
         }
@@ -442,10 +438,10 @@ impl<'a> Path {
             .fold(Spectrum::fill(1.0), |acc, t| acc.mul(t))
     }
 
-    pub fn probability(&self) -> f64 {
+    pub fn pdf(&self) -> f64 {
         self.vertices
             .iter()
-            .map(|v| v.forward_probability.unwrap_or(1.0))
+            .map(|v| v.forward_pdf.unwrap_or(1.0))
             .fold(1.0, |a, b| a * b)
     }
 
@@ -463,12 +459,12 @@ impl<'a> Path {
         };
         let (_, sum1) = camera_subpath
             .iter()
-            .map(|v| Some(v.reverse_probability? / v.forward_probability?))
+            .map(|v| Some(v.reverse_pdf? / v.forward_pdf?))
             .fold((1.0, 0.0), fold);
         let (_, sum2) = light_subpath
             .iter()
             .rev()
-            .map(|v| Some(v.forward_probability? / v.reverse_probability?))
+            .map(|v| Some(v.forward_pdf? / v.reverse_pdf?))
             .fold((1.0, 0.0), fold);
         1.0 / (1.0 + sum1 + sum2)
     }

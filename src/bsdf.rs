@@ -9,7 +9,7 @@ pub struct Bsdf {
 
 pub trait Bxdf: fmt::Debug {
     fn evaluate(&self, wo: Vector, wi: Vector) -> Spectrum;
-    fn probability(&self, wo: Vector, wi: Vector) -> Option<f64>;
+    fn pdf(&self, wo: Vector, wi: Vector) -> Option<f64>;
     fn sample_direction(&self, wo: Vector, sampler: &mut dyn Sampler) -> Vector;
 }
 
@@ -28,11 +28,11 @@ impl Bsdf {
         self.bxdfs[i].sample_direction(wo, sampler)
     }
 
-    pub fn probability(&self, wo: Vector, wi: Vector) -> Option<f64> {
+    pub fn pdf(&self, wo: Vector, wi: Vector) -> Option<f64> {
         let mut count = 0;
         let mut sum = 0.0;
         for bxdf in &self.bxdfs {
-            let result = bxdf.probability(wo, wi);
+            let result = bxdf.pdf(wo, wi);
             if result.is_some() {
                 count = count + 1;
             }
@@ -69,7 +69,7 @@ impl Bxdf for DiffuseBrdf {
         }
     }
 
-    fn probability(&self, wo: Vector, wi: Vector) -> Option<f64> {
+    fn pdf(&self, wo: Vector, wi: Vector) -> Option<f64> {
         let p = if util::same_hemisphere(self.normal, wo, wi) {
             util::abs_cos_theta(self.normal, wi) / PI
         } else {
@@ -111,7 +111,7 @@ impl Bxdf for SpecularBrdf {
         }
     }
 
-    fn probability(&self, _wo: Vector, _wi: Vector) -> Option<f64> {
+    fn pdf(&self, _wo: Vector, _wi: Vector) -> Option<f64> {
         None
     }
 
@@ -151,25 +151,25 @@ mod tests {
     }
 
     #[test]
-    fn test_diffuse_brdf_probability_same_hemisphere() {
+    fn test_diffuse_brdf_pdf_same_hemisphere() {
         let scale = Spectrum::fill(0.8);
         let normal = Vector::new(0.0, 1.0, 0.0);
         let brdf = DiffuseBrdf::new(normal, scale);
         let wo = Vector::new(1.0, 1.0, 0.0);
         let wi = Vector::new(-1.0, 1.0, 0.0);
-        let actual = brdf.probability(wo, wi);
+        let actual = brdf.pdf(wo, wi);
         let expected = Some(util::abs_cos_theta(normal, wi) / PI);
         assert_eq!(actual, expected);
     }
 
     #[test]
-    fn test_diffuse_brdf_probability_different_hemisphere() {
+    fn test_diffuse_brdf_pdf_different_hemisphere() {
         let scale = Spectrum::fill(0.8);
         let normal = Vector::new(0.0, 1.0, 0.0);
         let brdf = DiffuseBrdf::new(normal, scale);
         let wo = Vector::new(1.0, 1.0, 0.0);
         let wi = Vector::new(-1.0, -1.0, 0.0);
-        let actual = brdf.probability(wo, wi);
+        let actual = brdf.pdf(wo, wi);
         let expected = Some(0.0);
         assert_eq!(actual, expected);
     }
@@ -223,13 +223,13 @@ mod tests {
     }
 
     #[test]
-    fn test_specular_brdf_probability() {
+    fn test_specular_brdf_pdf() {
         let scale = Spectrum::fill(0.8);
         let normal = Vector::new(0.0, 1.0, 0.0);
         let brdf = SpecularBrdf::new(normal, scale);
         let wo = Vector::new(1.0, 1.0, 0.0);
         let wi = Vector::new(-1.0, 1.0, 0.0);
-        let actual = brdf.probability(wo, wi);
+        let actual = brdf.pdf(wo, wi);
         assert_eq!(actual, None);
     }
 
@@ -262,7 +262,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bsdf_probability() {
+    fn test_bsdf_pdf() {
         let scale = Spectrum::fill(0.8);
         let normal = Vector::new(0.0, 1.0, 0.0);
         let brdf1 = DiffuseBrdf::new(normal, scale);
@@ -272,7 +272,7 @@ mod tests {
         let bsdf = Bsdf {
             bxdfs: vec![Box::new(brdf1), Box::new(brdf2)],
         };
-        let actual = bsdf.probability(wo, wi);
+        let actual = bsdf.pdf(wo, wi);
         let expected = Some((util::abs_cos_theta(normal, wi) / PI) / 2.0);
         assert_eq!(actual, expected);
     }

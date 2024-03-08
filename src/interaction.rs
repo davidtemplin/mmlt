@@ -47,8 +47,8 @@ impl<'a> ObjectInteraction<'a> {
         }
     }
 
-    pub fn probability(&self, wo: Vector, wi: Vector) -> Option<f64> {
-        self.get_bsdf().probability(wo, wi)
+    pub fn pdf(&self, wo: Vector, wi: Vector) -> Option<f64> {
+        self.get_bsdf().pdf(wo, wi)
     }
 
     pub fn reflectance(&self, wo: Vector, wi: Vector) -> Spectrum {

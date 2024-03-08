@@ -15,9 +15,9 @@ use crate::{
 
 pub trait Light: fmt::Debug {
     fn radiance(&self, point: Point, normal: Vector, direction: Vector) -> Spectrum;
-    fn sampling_probability(&self) -> Option<f64>;
-    fn positional_probability(&self, point: Point) -> Option<f64>;
-    fn directional_probability(&self, normal: Vector, direction: Vector) -> Option<f64>;
+    fn sampling_pdf(&self) -> Option<f64>;
+    fn positional_pdf(&self, point: Point) -> Option<f64>;
+    fn directional_pdf(&self, normal: Vector, direction: Vector) -> Option<f64>;
     fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction;
     fn intersect(&self, ray: Ray) -> Option<Interaction>;
     fn id(&self) -> &String;
@@ -40,15 +40,15 @@ impl Light for DiffuseAreaLight {
         }
     }
 
-    fn sampling_probability(&self) -> Option<f64> {
+    fn sampling_pdf(&self) -> Option<f64> {
         Some(1.0 / self.light_count as f64)
     }
 
-    fn positional_probability(&self, _: Point) -> Option<f64> {
+    fn positional_pdf(&self, _: Point) -> Option<f64> {
         Some(1.0 / self.shape.area())
     }
 
-    fn directional_probability(&self, normal: Vector, direction: Vector) -> Option<f64> {
+    fn directional_pdf(&self, normal: Vector, direction: Vector) -> Option<f64> {
         Some(direction.norm().dot(normal) / PI)
     }
 
@@ -154,7 +154,7 @@ mod tests {
     }
 
     #[test]
-    fn test_diffuse_area_light_probability() {
+    fn test_diffuse_area_light_pdf() {
         let light_count = 4;
         let radius = 2.0;
         let shape = Sphere::new(Point::new(0.0, 0.0, 0.0), radius);
@@ -175,9 +175,9 @@ mod tests {
         let p_total = p_light * p_point * p_direction;
         let p_actual = || -> Option<f64> {
             Some(
-                light.sampling_probability()?
-                    * light.positional_probability(point)?
-                    * light.directional_probability(normal, direction)?,
+                light.sampling_pdf()?
+                    * light.positional_pdf(point)?
+                    * light.directional_pdf(normal, direction)?,
             )
         };
         assert_eq!(p_actual(), Some(p_total));

@@ -15,8 +15,8 @@ use crate::{
 
 pub trait Camera: fmt::Debug {
     fn importance(&self, point: Point, direction: Vector) -> Spectrum;
-    fn positional_probability(&self, point: Point) -> Option<f64>;
-    fn directional_probability(&self, direction: Vector) -> Option<f64>;
+    fn positional_pdf(&self, point: Point) -> Option<f64>;
+    fn directional_pdf(&self, direction: Vector) -> Option<f64>;
     fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction;
     fn intersect(&self, ray: Ray) -> Option<Interaction>;
     fn id(&self) -> &String;
@@ -43,11 +43,11 @@ impl Camera for PinholeCamera {
         Spectrum::fill(1.0 / (a * c4))
     }
 
-    fn positional_probability(&self, _: Point) -> Option<f64> {
+    fn positional_pdf(&self, _: Point) -> Option<f64> {
         Some(1.0)
     }
 
-    fn directional_probability(&self, direction: Vector) -> Option<f64> {
+    fn directional_pdf(&self, direction: Vector) -> Option<f64> {
         let c = direction.norm().dot(self.w);
         let d = self.distance / c;
         let d2 = d * d;
@@ -294,7 +294,7 @@ mod tests {
     }
 
     #[test]
-    fn test_pinhole_camera_probability() {
+    fn test_pinhole_camera_pdf() {
         let origin = Point::new(0.0, 0.0, 0.0);
         let look_at = Vector::new(0.0, 0.0, 50.0);
         let field_of_view = 60.0 * PI / 180.0;
@@ -310,9 +310,9 @@ mod tests {
         let half_fov = field_of_view / 2.0;
         let distance = h / (2.0 * half_fov.tan());
         let d = distance / c;
-        let probability = Some((d * d) / (a * c));
-        assert_eq!(camera.directional_probability(r), probability);
-        assert_eq!(camera.positional_probability(origin), Some(1.0));
+        let pdf = Some((d * d) / (a * c));
+        assert_eq!(camera.directional_pdf(r), pdf);
+        assert_eq!(camera.positional_pdf(origin), Some(1.0));
     }
 
     #[test]

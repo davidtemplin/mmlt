@@ -8,7 +8,7 @@ pub trait Sampler {
 }
 
 pub struct MmltSampler {
-    pub large_step_probability: f64,
+    pub large_step_pdf: f64,
     sigma: f64,
     stream_count: usize,
     stream_index: usize,
@@ -57,7 +57,7 @@ pub enum MutationType {
 impl MmltSampler {
     pub fn new(stream_count: usize) -> MmltSampler {
         MmltSampler {
-            large_step_probability: 0.3,
+            large_step_pdf: 0.3,
             sigma: 0.01,
             stream_count,
             stream_index: 0,
@@ -73,7 +73,7 @@ impl MmltSampler {
     pub fn mutate(&mut self) -> MutationType {
         self.iteration = self.iteration + 1;
         let r = self.rng.gen_range(0.0..1.0);
-        self.mutation_type = if r < self.large_step_probability {
+        self.mutation_type = if r < self.large_step_pdf {
             MutationType::LargeStep
         } else {
             MutationType::SmallStep
