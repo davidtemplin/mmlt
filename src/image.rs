@@ -39,7 +39,7 @@ impl Image {
     }
 
     pub fn contribute(&mut self, spectrum: Spectrum, coordinates: PixelCoordinates) {
-        let i = coordinates.y * self.height + coordinates.x;
+        let i = coordinates.y * self.width + coordinates.x;
         self.pixels[i] = self.pixels[i] + spectrum;
     }
 
@@ -49,10 +49,16 @@ impl Image {
         let mut writer = LineWriter::new(file);
         writeln!(writer, "PF").map_err(m)?;
         writeln!(writer, "{} {}", self.width, self.height).map_err(m)?;
-        writeln!(writer, "-1.0").map_err(m)?;
-        for pixel in &self.pixels {
-            let rgb = pixel.to_rgb();
-            writeln!(writer, "{} {} {}", rgb.r, rgb.g, rgb.b).map_err(m)?;
+        writeln!(writer, "-1").map_err(m)?;
+        for y in (0..self.height).rev() {
+            for x in 0..self.width {
+                let i = (y * self.width + x) as usize;
+                let pixel = self.pixels[i];
+                let rgb = pixel.to_rgb();
+                writer.write(&(rgb.r as f32).to_le_bytes()).map_err(m)?;
+                writer.write(&(rgb.g as f32).to_le_bytes()).map_err(m)?;
+                writer.write(&(rgb.b as f32).to_le_bytes()).map_err(m)?;
+            }
         }
         writer.flush().map_err(m)?;
         Ok(())
