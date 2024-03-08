@@ -1,20 +1,18 @@
 use std::collections::VecDeque;
 
 use crate::{
-    geometry::Geometry,
     image::PixelCoordinates,
-    interaction::{CameraInteraction, Interaction, LightInteraction, ObjectInteraction},
+    interaction::Interaction,
     ray::Ray,
     sampler::{MmltSampler, Sampler},
     scene::Scene,
     spectrum::Spectrum,
     util,
-    vector::Vector,
 };
 
 #[derive(Debug)]
-pub struct Path<'a> {
-    vertices: Vec<Vertex<'a>>,
+pub struct Path {
+    vertices: Vec<Vertex>,
     technique: Technique,
     pixel_coordinates: PixelCoordinates,
 }
@@ -26,91 +24,10 @@ pub enum PathType {
 }
 
 #[derive(Debug)]
-pub struct CameraVertex<'a> {
-    interaction: CameraInteraction<'a>,
-    wi: Vector,
-    direction_to_area: f64,
-    geometry_term: f64,
-}
-
-#[derive(Debug)]
-pub struct LightVertex<'a> {
-    interaction: LightInteraction<'a>,
-    wo: Vector,
-    direction_to_area: f64,
-}
-
-#[derive(Debug)]
-pub struct ObjectVertex<'a> {
-    interaction: ObjectInteraction<'a>,
-    wo: Vector,
-    wi: Vector,
-    direction_to_area: f64,
-    geometry_term: f64,
-}
-
-#[derive(Debug)]
-pub enum Vertex<'a> {
-    Camera(CameraVertex<'a>),
-    Light(LightVertex<'a>),
-    Object(ObjectVertex<'a>),
-}
-
-impl<'a> Vertex<'a> {
-    fn throughput(&self) -> Spectrum {
-        match self {
-            Vertex::Camera(v) => {
-                v.interaction
-                    .camera
-                    .importance(v.interaction.geometry.point, v.wi)
-                    * v.geometry_term
-            }
-            Vertex::Light(v) => v.interaction.light.radiance(
-                v.interaction.geometry.point,
-                v.interaction.geometry.normal,
-                v.wo,
-            ),
-            Vertex::Object(v) => v.interaction.reflectance(v.wo, v.wi) * v.geometry_term,
-        }
-    }
-
-    fn probability(&self, path_type: PathType) -> Option<f64> {
-        let p = match self {
-            Vertex::Camera(v) => {
-                v.interaction
-                    .camera
-                    .probability(v.interaction.geometry.point, v.wi)?
-                    * v.direction_to_area
-            }
-            Vertex::Light(v) => {
-                v.interaction.light.probability(
-                    v.interaction.geometry.point,
-                    v.interaction.geometry.normal,
-                    v.wo,
-                )? * v.direction_to_area
-            }
-            Vertex::Object(v) => match path_type {
-                PathType::Camera => v.interaction.probability(v.wo, v.wi)? * v.direction_to_area,
-                PathType::Light => v.interaction.probability(v.wi, v.wo)? * v.direction_to_area,
-            },
-        };
-        Some(p)
-    }
-
-    fn weight(&self, direction: Direction) -> Option<f64> {
-        match self {
-            Vertex::Camera(_) => Some(1.0),
-            Vertex::Light(_) => Some(1.0),
-            Vertex::Object(_) => {
-                let rev = self.probability(PathType::Light)?;
-                let fwd = self.probability(PathType::Camera)?;
-                match direction {
-                    Direction::Forward => Some(rev / fwd),
-                    Direction::Reverse => Some(fwd / rev),
-                }
-            }
-        }
-    }
+pub struct Vertex {
+    throughput: Spectrum,
+    forward_probability: Option<f64>,
+    reverse_probability: Option<f64>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -171,16 +88,12 @@ const LIGHT_STREAM: usize = 1;
 const CAMERA_STREAM: usize = 2;
 const STREAM_COUNT: usize = 3;
 
-impl<'a> Path<'a> {
+impl<'a> Path {
     pub fn sampler() -> MmltSampler {
         MmltSampler::new(STREAM_COUNT)
     }
 
-    pub fn generate(
-        scene: &'a Scene,
-        sampler: &mut impl Sampler,
-        path_length: usize,
-    ) -> Option<Path<'a>> {
+    pub fn generate(scene: &Scene, sampler: &mut impl Sampler, path_length: usize) -> Option<Path> {
         sampler.start_stream(TECHNIQUE_STREAM);
         let technique = Technique::sample(path_length, sampler);
         if technique.camera == 0 {
@@ -203,10 +116,10 @@ impl<'a> Path<'a> {
     }
 
     fn connect_camera_to_light(
-        scene: &'a Scene,
+        scene: &Scene,
         sampler: &mut impl Sampler,
         technique: Technique,
-    ) -> Option<Path<'a>> {
+    ) -> Option<Path> {
         sampler.start_stream(CAMERA_STREAM);
         let sampled_camera_interaction = scene.camera.sample_interaction(sampler);
         sampler.start_stream(LIGHT_STREAM);
@@ -217,17 +130,17 @@ impl<'a> Path<'a> {
         let ray = Ray::new(light_interaction.geometry().point, ray_direction);
         let camera_interaction = scene.intersect(ray).filter(|i| i.is_camera())?;
         light_interaction.set_direction(-camera_interaction.geometry().direction);
-        let mut interactions: VecDeque<Interaction<'a>> = VecDeque::new();
+        let mut interactions: VecDeque<Interaction> = VecDeque::new();
         interactions.push_back(camera_interaction);
         interactions.push_back(light_interaction);
         Path::connect(&mut interactions, technique)
     }
 
     fn connect_full_light_path(
-        scene: &'a Scene,
+        scene: &Scene,
         sampler: &mut impl Sampler,
         technique: Technique,
-    ) -> Option<Path<'a>> {
+    ) -> Option<Path> {
         sampler.start_stream(LIGHT_STREAM);
         let light = scene.sample_light(sampler);
         let light_interaction = light.sample_interaction(sampler);
@@ -243,10 +156,10 @@ impl<'a> Path<'a> {
     }
 
     fn connect_full_camera_path(
-        scene: &'a Scene,
+        scene: &Scene,
         sampler: &mut impl Sampler,
         technique: Technique,
-    ) -> Option<Path<'a>> {
+    ) -> Option<Path> {
         sampler.start_stream(CAMERA_STREAM);
         let camera_interaction = scene.camera.sample_interaction(sampler);
         let mut interactions = Path::trace(
@@ -261,10 +174,10 @@ impl<'a> Path<'a> {
     }
 
     fn connect_camera_to_light_subpath(
-        scene: &'a Scene,
+        scene: &Scene,
         sampler: &mut impl Sampler,
         technique: Technique,
-    ) -> Option<Path<'a>> {
+    ) -> Option<Path> {
         sampler.start_stream(LIGHT_STREAM);
         let light = scene.sample_light(sampler);
         let light_interaction = light.sample_interaction(sampler);
@@ -288,10 +201,10 @@ impl<'a> Path<'a> {
     }
 
     fn connect_camera_subpath_to_light(
-        scene: &'a Scene,
+        scene: &Scene,
         sampler: &mut impl Sampler,
         technique: Technique,
-    ) -> Option<Path<'a>> {
+    ) -> Option<Path> {
         sampler.start_stream(CAMERA_STREAM);
         let camera_interaction = scene.camera.sample_interaction(sampler);
         let mut interactions = Path::trace(
@@ -315,10 +228,10 @@ impl<'a> Path<'a> {
     }
 
     fn connect_camera_subpath_to_light_subpath(
-        scene: &'a Scene,
+        scene: &Scene,
         sampler: &mut impl Sampler,
         technique: Technique,
-    ) -> Option<Path<'a>> {
+    ) -> Option<Path> {
         sampler.start_stream(CAMERA_STREAM);
         let camera_interaction = scene.camera.sample_interaction(sampler);
         let camera_interactions = Path::trace(
@@ -374,122 +287,120 @@ impl<'a> Path<'a> {
         Some(stack)
     }
 
-    fn connect(
-        interactions: &mut VecDeque<Interaction<'a>>,
-        technique: Technique,
-    ) -> Option<Path<'a>> {
-        let mut vertices: Vec<Vertex<'a>> = Vec::new();
-        let mut previous_geometry: Option<Geometry> = None;
-        let mut i: usize = 0;
+    fn connect(interactions: &mut VecDeque<Interaction>, technique: Technique) -> Option<Path> {
+        let mut vertices: Vec<Vertex> = Vec::new();
         let mut pixel_coordinates: Option<PixelCoordinates> = None;
-
-        while interactions.len() > 0 {
-            let interaction = interactions.pop_front()?;
-            let current_geometry = interaction.geometry();
-            let next_geometry = interactions.get(0).map(Interaction::geometry);
+        let mut area_probability: Option<f64> = None;
+        for (index, interaction) in interactions.iter().enumerate() {
+            let previous_geometry = interactions.get(index - 1).map(Interaction::geometry);
+            let next_geometry = interactions.get(index + 1).map(Interaction::geometry);
             match interaction {
                 Interaction::Camera(camera_interaction) => {
                     pixel_coordinates.replace(camera_interaction.pixel_coordinates);
-                    match technique.path_type(i) {
+                    let point = camera_interaction.geometry.point;
+                    let direction = next_geometry?.point - point;
+                    let importance = camera_interaction.camera.importance(point, direction);
+                    let normal = camera_interaction.geometry.normal;
+                    let next_normal = next_geometry?.normal;
+                    let geometry_term = util::geometry_term(direction, normal, next_normal);
+                    let throughput = importance * geometry_term;
+                    let positional_probability =
+                        camera_interaction.camera.positional_probability(point);
+                    let directional_probability =
+                        camera_interaction.camera.directional_probability(direction);
+                    area_probability = directional_probability
+                        .map(|p| p * util::direction_to_area(direction, next_normal));
+                    let vertex = match technique.path_type(index) {
+                        PathType::Camera => Vertex {
+                            throughput,
+                            forward_probability: positional_probability,
+                            reverse_probability: None,
+                        },
+                        PathType::Light => Vertex {
+                            throughput,
+                            forward_probability: None,
+                            reverse_probability: positional_probability,
+                        },
+                    };
+                    vertices.push(vertex);
+                }
+                Interaction::Light(light_interaction) => {
+                    let point = light_interaction.geometry.point;
+                    let normal = light_interaction.geometry.normal;
+                    let direction = previous_geometry?.point - point;
+                    let throughput = light_interaction.light.radiance(point, normal, direction);
+                    let sampling_probability = light_interaction.light.sampling_probability();
+                    let positional_probability =
+                        light_interaction.light.positional_probability(point);
+                    let directional_probability = light_interaction
+                        .light
+                        .directional_probability(normal, direction);
+                    let vertex = match technique.path_type(index) {
+                        PathType::Camera => Vertex {
+                            throughput,
+                            forward_probability: area_probability,
+                            reverse_probability: sampling_probability
+                                .and_then(|p1| positional_probability.map(|p2| p1 * p2)),
+                        },
+                        PathType::Light => Vertex {
+                            throughput,
+                            forward_probability: sampling_probability
+                                .and_then(|p1| positional_probability.map(|p2| p1 * p2)),
+                            reverse_probability: area_probability,
+                        },
+                    };
+                    vertices.push(vertex);
+                    let previous_vertex = &mut vertices[index - 1];
+                    let previous_normal = previous_geometry?.normal;
+                    let direction_to_area = util::direction_to_area(direction, previous_normal);
+                    area_probability = directional_probability.map(|p| p * direction_to_area);
+                    match technique.path_type(index - 1) {
                         PathType::Camera => {
-                            let wi = next_geometry?.point - camera_interaction.geometry.point;
-                            let geometry_term = util::geometry_term(
-                                wi,
-                                camera_interaction.geometry.normal,
-                                next_geometry?.normal,
-                            );
-                            let direction_to_area =
-                                util::direction_to_area(wi, next_geometry?.normal);
-                            let camera_vertex = CameraVertex {
-                                interaction: camera_interaction,
-                                wi,
-                                direction_to_area,
-                                geometry_term,
-                            };
-                            vertices.push(Vertex::Camera(camera_vertex));
+                            previous_vertex.reverse_probability = area_probability;
                         }
                         PathType::Light => {
-                            let wi = next_geometry?.point - camera_interaction.geometry.point;
-                            let geometry_term = util::geometry_term(
-                                wi,
-                                camera_interaction.geometry.normal,
-                                next_geometry?.normal,
-                            );
-                            let camera_vertex = CameraVertex {
-                                interaction: camera_interaction,
-                                wi,
-                                direction_to_area: 1.0,
-                                geometry_term,
-                            };
-                            vertices.push(Vertex::Camera(camera_vertex));
+                            previous_vertex.forward_probability = area_probability;
                         }
                     }
                 }
-                Interaction::Light(light_interaction) => {
-                    match technique.path_type(i) {
-                        PathType::Camera => {
-                            let wo = previous_geometry?.point - light_interaction.geometry.point;
-                            let light_vertex = LightVertex {
-                                interaction: light_interaction,
-                                wo,
-                                direction_to_area: 1.0,
-                            };
-                            vertices.push(Vertex::Light(light_vertex));
-                        }
-                        PathType::Light => {
-                            let wo = previous_geometry?.point - light_interaction.geometry.point;
-                            let direction_to_area =
-                                util::direction_to_area(wo, previous_geometry?.normal);
-                            let light_vertex = LightVertex {
-                                interaction: light_interaction,
-                                wo,
-                                direction_to_area,
-                            };
-                            vertices.push(Vertex::Light(light_vertex));
-                        }
-                    };
-                }
                 Interaction::Object(object_interaction) => {
-                    match technique.path_type(i) {
+                    let point = object_interaction.geometry.point;
+                    let wo = previous_geometry?.point - point;
+                    let wi = next_geometry?.point - point;
+                    let vertex = match technique.path_type(index) {
                         PathType::Camera => {
-                            let wi = next_geometry?.point - object_interaction.geometry.point;
-                            let wo = object_interaction.geometry.direction * -1.0;
-                            let normal = object_interaction.geometry.normal;
-                            let geometry_term =
-                                util::geometry_term(wi, normal, next_geometry?.normal);
-                            let direction_to_area =
-                                util::direction_to_area(wi, next_geometry?.normal);
-                            let object_vertex = ObjectVertex {
-                                interaction: object_interaction,
-                                wo,
-                                wi,
-                                direction_to_area,
-                                geometry_term,
-                            };
-                            vertices.push(Vertex::Object(object_vertex));
+                            let throughput = object_interaction.reflectance(wo, wi);
+                            Vertex {
+                                throughput,
+                                forward_probability: area_probability,
+                                reverse_probability: None,
+                            }
                         }
                         PathType::Light => {
-                            let wi = object_interaction.geometry.direction * -1.0;
-                            let wo = previous_geometry?.point - object_interaction.geometry.point;
-                            let normal = object_interaction.geometry.normal;
-                            let geometry_term =
-                                util::geometry_term(wi, normal, next_geometry?.normal);
-                            let direction_to_area =
-                                util::direction_to_area(wo, previous_geometry?.normal);
-                            let object_vertex = ObjectVertex {
-                                interaction: object_interaction,
-                                wo,
-                                wi,
-                                direction_to_area,
-                                geometry_term,
-                            };
-                            vertices.push(Vertex::Object(object_vertex));
+                            let throughput = object_interaction.reflectance(wi, wo);
+                            Vertex {
+                                throughput,
+                                forward_probability: None,
+                                reverse_probability: area_probability,
+                            }
                         }
                     };
+                    vertices.push(vertex);
+                    let previous_vertex = &mut vertices[index - 1];
+                    let directional_probability = object_interaction.probability(wo, wi);
+                    let normal = object_interaction.geometry.normal;
+                    let direction_to_area = util::direction_to_area(wo, normal);
+                    area_probability = directional_probability.map(|p| p * direction_to_area);
+                    match technique.path_type(index - 1) {
+                        PathType::Camera => {
+                            previous_vertex.reverse_probability = area_probability;
+                        }
+                        PathType::Light => {
+                            previous_vertex.forward_probability = area_probability;
+                        }
+                    }
                 }
             }
-            previous_geometry.replace(current_geometry);
-            i = i + 1;
         }
 
         let path = Path {
@@ -524,32 +435,15 @@ impl<'a> Path<'a> {
     pub fn throughput(&self) -> Spectrum {
         self.vertices
             .iter()
-            .map(|v| v.throughput())
+            .map(|v| v.throughput)
             .fold(Spectrum::fill(1.0), |acc, t| acc.mul(t))
     }
 
     pub fn probability(&self) -> f64 {
-        let p1 = if self.technique.camera > 1 {
-            let camera_subpath = &self.vertices[0..self.technique.camera - 1];
-            camera_subpath
-                .iter()
-                .map(|v| v.probability(PathType::Camera).unwrap_or(1.0))
-                .fold(1.0, |acc, p| acc * p)
-        } else {
-            1.0
-        };
-
-        let p2 = if self.technique.light > 1 {
-            let light_subpath = &self.vertices[self.vertices.len() - self.technique.light + 1..];
-            light_subpath
-                .iter()
-                .map(|v| v.probability(PathType::Light).unwrap_or(1.0))
-                .fold(1.0, |acc, p| acc * p)
-        } else {
-            1.0
-        };
-
-        p1 * p2
+        self.vertices
+            .iter()
+            .map(|v| v.forward_probability.unwrap_or(1.0))
+            .fold(1.0, |a, b| a * b)
     }
 
     pub fn weight(&self) -> f64 {
@@ -566,12 +460,12 @@ impl<'a> Path<'a> {
         };
         let (_, sum1) = camera_subpath
             .iter()
-            .map(|v| v.weight(Direction::Forward))
+            .map(|v| Some(v.reverse_probability? / v.forward_probability?))
             .fold((1.0, 0.0), fold);
         let (_, sum2) = light_subpath
             .iter()
             .rev()
-            .map(|v| v.weight(Direction::Reverse))
+            .map(|v| Some(v.forward_probability? / v.reverse_probability?))
             .fold((1.0, 0.0), fold);
         1.0 / (1.0 + sum1 + sum2)
     }
@@ -579,16 +473,8 @@ impl<'a> Path<'a> {
 
 #[cfg(test)]
 mod tests {
-    use std::f64::consts::PI;
-
-    use super::{CameraVertex, PathType, Technique, Vertex};
-    use crate::{
-        camera::{Camera, PinholeCamera},
-        interaction::Interaction,
-        sampler::test::MockSampler,
-        util,
-        vector::{Point, Vector},
-    };
+    use super::{PathType, Technique};
+    use crate::sampler::test::MockSampler;
 
     #[test]
     fn test_technique_sample() {
@@ -617,72 +503,5 @@ mod tests {
         assert_eq!(technique.path_type(1), PathType::Camera);
         assert_eq!(technique.path_type(2), PathType::Light);
         assert_eq!(technique.path_type(3), PathType::Light);
-    }
-
-    #[test]
-    fn test_camera_vertex_throughput() {
-        let origin = Point::new(50.0, 50.0, 1.0);
-        let look_at = Point::new(50.0, 50.0, 50.0);
-        let field_of_view = 60.0 * (PI / 180.0);
-        let image_width = 512;
-        let image_height = 512;
-        let camera = PinholeCamera::new(origin, look_at, field_of_view, image_width, image_height);
-        let mut sampler = MockSampler::new();
-        sampler.add(0.75);
-        sampler.add(0.75);
-        if let Interaction::Camera(camera_interaction) = camera.sample_interaction(&mut sampler) {
-            let wi = camera_interaction.geometry.direction * 10.0;
-            let next_normal = Vector::new(0.25, 1.0, -1.0);
-            let direction_to_area = util::direction_to_area(wi, next_normal);
-            let geometry_term =
-                util::geometry_term(wi, camera_interaction.geometry.normal, next_normal);
-            let camera_vertex = CameraVertex {
-                interaction: camera_interaction,
-                wi,
-                direction_to_area,
-                geometry_term,
-            };
-            let vertex = Vertex::Camera(camera_vertex);
-            let throughput = vertex.throughput();
-            assert_eq!(throughput, camera.importance(origin, wi) * geometry_term);
-        } else {
-            panic!("expected camera interaction");
-        }
-    }
-
-    #[test]
-    fn test_camera_vertex_probability() {
-        let origin = Point::new(50.0, 50.0, 1.0);
-        let look_at = Point::new(50.0, 50.0, 50.0);
-        let field_of_view = 60.0 * (PI / 180.0);
-        let image_width = 512;
-        let image_height = 512;
-        let camera = PinholeCamera::new(origin, look_at, field_of_view, image_width, image_height);
-        let mut sampler = MockSampler::new();
-        sampler.add(0.75);
-        sampler.add(0.75);
-        if let Interaction::Camera(camera_interaction) = camera.sample_interaction(&mut sampler) {
-            let wi = camera_interaction.geometry.direction * 10.0;
-            let next_normal = Vector::new(0.25, 1.0, -1.0);
-            let direction_to_area = util::direction_to_area(wi, next_normal);
-            let geometry_term =
-                util::geometry_term(wi, camera_interaction.geometry.normal, next_normal);
-            let camera_vertex = CameraVertex {
-                interaction: camera_interaction,
-                wi,
-                direction_to_area,
-                geometry_term,
-            };
-            let vertex = Vertex::Camera(camera_vertex);
-            let probability = vertex.probability(PathType::Camera);
-            assert_eq!(
-                probability,
-                camera
-                    .probability(origin, wi)
-                    .map(|p| p * direction_to_area)
-            );
-        } else {
-            panic!("expected camera interaction");
-        }
     }
 }

@@ -15,7 +15,9 @@ use crate::{
 
 pub trait Light: fmt::Debug {
     fn radiance(&self, point: Point, normal: Vector, direction: Vector) -> Spectrum;
-    fn probability(&self, point: Point, normal: Vector, direction: Vector) -> Option<f64>;
+    fn sampling_probability(&self) -> Option<f64>;
+    fn positional_probability(&self, point: Point) -> Option<f64>;
+    fn directional_probability(&self, normal: Vector, direction: Vector) -> Option<f64>;
     fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction;
     fn intersect(&self, ray: Ray) -> Option<Interaction>;
     fn id(&self) -> &String;
@@ -38,9 +40,16 @@ impl Light for DiffuseAreaLight {
         }
     }
 
-    fn probability(&self, _point: Point, normal: Vector, direction: Vector) -> Option<f64> {
-        let p = direction.norm().dot(normal) / (self.light_count as f64 * self.shape.area() * PI);
-        Some(p)
+    fn sampling_probability(&self) -> Option<f64> {
+        Some(1.0 / self.light_count as f64)
+    }
+
+    fn positional_probability(&self, _: Point) -> Option<f64> {
+        Some(1.0 / self.shape.area())
+    }
+
+    fn directional_probability(&self, normal: Vector, direction: Vector) -> Option<f64> {
+        Some(direction.norm().dot(normal) / PI)
     }
 
     fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction {
@@ -164,6 +173,13 @@ mod tests {
         let p_point = 1.0 / area;
         let p_direction = normal.dot(direction.norm()) / PI;
         let p_total = p_light * p_point * p_direction;
-        assert_eq!(light.probability(point, normal, direction), Some(p_total));
+        let p_actual = || -> Option<f64> {
+            Some(
+                light.sampling_probability()?
+                    * light.positional_probability(point)?
+                    * light.directional_probability(normal, direction)?,
+            )
+        };
+        assert_eq!(p_actual(), Some(p_total));
     }
 }

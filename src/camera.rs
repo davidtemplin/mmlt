@@ -15,7 +15,8 @@ use crate::{
 
 pub trait Camera: fmt::Debug {
     fn importance(&self, point: Point, direction: Vector) -> Spectrum;
-    fn probability(&self, point: Point, direction: Vector) -> Option<f64>;
+    fn positional_probability(&self, point: Point) -> Option<f64>;
+    fn directional_probability(&self, direction: Vector) -> Option<f64>;
     fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction;
     fn intersect(&self, ray: Ray) -> Option<Interaction>;
     fn id(&self) -> &String;
@@ -42,7 +43,11 @@ impl Camera for PinholeCamera {
         Spectrum::fill(1.0 / (a * c4))
     }
 
-    fn probability(&self, _point: Point, direction: Vector) -> Option<f64> {
+    fn positional_probability(&self, _: Point) -> Option<f64> {
+        Some(1.0)
+    }
+
+    fn directional_probability(&self, direction: Vector) -> Option<f64> {
         let c = direction.norm().dot(self.w);
         let d = self.distance / c;
         let d2 = d * d;
@@ -306,7 +311,8 @@ mod tests {
         let distance = h / (2.0 * half_fov.tan());
         let d = distance / c;
         let probability = Some((d * d) / (a * c));
-        assert_eq!(camera.probability(origin, r), probability);
+        assert_eq!(camera.directional_probability(r), probability);
+        assert_eq!(camera.positional_probability(origin), Some(1.0));
     }
 
     #[test]
