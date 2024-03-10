@@ -13,7 +13,7 @@ impl Pdf {
         for k in 1..h.len() {
             cdf[k] = cdf[k - 1] + h[k];
         }
-        for k in 1..h.len() {
+        for k in 0..h.len() {
             pdf[k] = h[k] / cdf[cdf.len() - 1];
             cdf[k] = cdf[k] / cdf[cdf.len() - 1];
         }

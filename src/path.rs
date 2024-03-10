@@ -94,6 +94,14 @@ impl<'a> Path {
         MmltSampler::new(STREAM_COUNT)
     }
 
+    pub fn require(scene: &Scene, sampler: &mut impl Sampler, path_length: usize) -> Option<Path> {
+        let mut path = None;
+        while let None = path {
+            path = Path::generate(scene, sampler, path_length);
+        }
+        path
+    }
+
     pub fn generate(scene: &Scene, sampler: &mut impl Sampler, path_length: usize) -> Option<Path> {
         sampler.start_stream(TECHNIQUE_STREAM);
         let technique = Technique::sample(path_length, sampler);
