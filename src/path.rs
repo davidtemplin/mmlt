@@ -72,10 +72,28 @@ pub struct Contribution {
 }
 
 impl Contribution {
-    pub fn ratio(&self, current_contribution: Contribution) -> f64 {
+    pub fn empty() -> Contribution {
+        Contribution {
+            scalar: 0.0,
+            spectrum: Spectrum::black(),
+            pixel_coordinates: PixelCoordinates { x: 0, y: 0 },
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.scalar > 0.0
+    }
+
+    pub fn acceptance(
+        current_contribution: Contribution,
+        proposal_contribution: Contribution,
+    ) -> f64 {
         if current_contribution.scalar > 0.0 {
             f64::max(
-                f64::min(1.0, self.scalar / current_contribution.scalar),
+                f64::min(
+                    1.0,
+                    proposal_contribution.scalar / current_contribution.scalar,
+                ),
                 0.0,
             )
         } else {
@@ -94,12 +112,16 @@ impl<'a> Path {
         MmltSampler::new(STREAM_COUNT)
     }
 
-    pub fn require(scene: &Scene, sampler: &mut impl Sampler, path_length: usize) -> Option<Path> {
-        let mut path = None;
-        while let None = path {
-            path = Path::generate(scene, sampler, path_length);
+    pub fn contribute(
+        scene: &Scene,
+        sampler: &mut impl Sampler,
+        path_length: usize,
+    ) -> Contribution {
+        if let Some(path) = Path::generate(scene, sampler, path_length) {
+            path.contribution()
+        } else {
+            Contribution::empty()
         }
-        path
     }
 
     pub fn generate(scene: &Scene, sampler: &mut impl Sampler, path_length: usize) -> Option<Path> {
@@ -419,24 +441,22 @@ impl<'a> Path {
         Some(path)
     }
 
-    pub fn contribution(&self) -> Option<Contribution> {
+    pub fn contribution(&self) -> Contribution {
         let p = self.pdf();
         if p == 0.0 {
-            return None;
+            return Contribution::empty();
         }
 
         let c = self.throughput() * self.weight() / p;
         if c.is_black() {
-            return None;
+            return Contribution::empty();
         }
 
-        let contribution = Contribution {
+        Contribution {
             scalar: c.luminance(),
             spectrum: c,
             pixel_coordinates: self.pixel_coordinates,
-        };
-
-        Some(contribution)
+        }
     }
 
     pub fn throughput(&self) -> Spectrum {
