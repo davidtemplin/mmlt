@@ -36,12 +36,13 @@ impl Integrator for MmltIntegrator {
         for k in 0..self.max_path_length {
             for _ in 0..self.initial_sample_count {
                 let mut sampler = Path::sampler();
-                if let Some(path) = Path::generate(scene, &mut sampler, k) {
+                if let Some(path) = Path::generate(scene, &mut sampler, k + 2) {
                     if let Some(contribution) = path.contribution() {
                         b[k] = b[k] + contribution.scalar;
                     }
                 }
             }
+            b[k] = b[k] / self.initial_sample_count as f64;
         }
 
         let pdf = Pdf::new(&b);
@@ -50,7 +51,7 @@ impl Integrator for MmltIntegrator {
 
         for k in 0..self.max_path_length {
             let mut sampler = Path::sampler();
-            if let Some(path) = Path::require(scene, &mut sampler, k) {
+            if let Some(path) = Path::require(scene, &mut sampler, k + 2) {
                 if let Some(contribution) = path.contribution() {
                     contributions[k] = contribution;
                 }
@@ -70,7 +71,7 @@ impl Integrator for MmltIntegrator {
             let mutation_type = sampler.mutate();
             let current_contribution = contributions[k];
 
-            if let Some(path) = Path::generate(scene, sampler, k) {
+            if let Some(path) = Path::generate(scene, sampler, k + 2) {
                 if let Some(proposal_contribution) = path.contribution() {
                     a = proposal_contribution.ratio(current_contribution);
                     let step_factor = match mutation_type {
