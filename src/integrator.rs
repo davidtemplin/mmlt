@@ -48,8 +48,9 @@ impl Integrator for MmltIntegrator {
 
         for k in 0..self.max_path_length - 1 {
             let mut sampler = Path::sampler();
-            contributions[k] = Path::contribute(scene, &mut sampler, k + 2);
-            samplers[k] = sampler;
+            let contribution = Path::contribute(scene, &mut sampler, k + 2);
+            contributions.push(contribution);
+            samplers.push(sampler);
         }
 
         let mut sample_count: u64 = 0;
@@ -62,7 +63,6 @@ impl Integrator for MmltIntegrator {
             let sampler = &mut samplers[k];
             let mutation_type = sampler.mutate();
             let current_contribution = contributions[k];
-
             let proposal_contribution = Path::contribute(scene, sampler, k + 2);
             let a = Contribution::acceptance(current_contribution, proposal_contribution);
             let step_factor = match mutation_type {
