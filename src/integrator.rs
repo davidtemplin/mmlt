@@ -91,6 +91,8 @@ impl Integrator for MmltIntegrator {
             }
         }
 
+        image.scale(1.0 / self.average_samples_per_pixel as f64);
+
         image
     }
 }

@@ -63,6 +63,12 @@ impl Image {
         writer.flush().map_err(m)?;
         Ok(())
     }
+
+    pub fn scale(&mut self, s: f64) {
+        for i in 0..self.pixels.len() {
+            self.pixels[i] = self.pixels[i] * s;
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
