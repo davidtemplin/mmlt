@@ -60,7 +60,7 @@ impl Camera for PinholeCamera {
         let x = sampler.sample(0.0..self.pixel_width);
         let y = sampler.sample(0.0..self.pixel_height);
         let u = self.u * (x - self.pixel_width / 2.0);
-        let v = self.v * (y - self.pixel_height / 2.0);
+        let v = -self.v * (y - self.pixel_height / 2.0);
         let w = self.w * self.distance;
         let direction = (u + v + w).norm();
         let pixel_coordinates = PixelCoordinates::new(x as usize, y as usize);
