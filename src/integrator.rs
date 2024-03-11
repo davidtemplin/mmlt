@@ -72,14 +72,14 @@ impl Integrator for MmltIntegrator {
 
             if !proposal_contribution.is_empty() {
                 let weight = (k as f64 + 2.0) / pdf.value(k) * (a + step_factor)
-                    / (proposal_contribution.scalar / b[k] + sampler.large_step_pdf);
+                    / (proposal_contribution.scalar / b[k] + sampler.large_step_probability);
                 let spectrum = proposal_contribution.spectrum * weight;
                 image.contribute(spectrum, proposal_contribution.pixel_coordinates);
             }
 
             if !current_contribution.is_empty() {
                 let weight = (k as f64 + 2.0) / pdf.value(k) * (1.0 - a)
-                    / (current_contribution.scalar / b[k] + sampler.large_step_pdf);
+                    / (current_contribution.scalar / b[k] + sampler.large_step_probability);
                 let spectrum = current_contribution.spectrum * weight;
                 image.contribute(spectrum, current_contribution.pixel_coordinates);
             }
