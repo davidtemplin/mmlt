@@ -1,5 +1,6 @@
 use rand::{distributions::Distribution, Rng};
 
+#[derive(Debug)]
 pub struct Pdf {
     pdf: Vec<f64>,
     cdf: Vec<f64>,
@@ -29,7 +30,7 @@ impl Distribution<usize> for Pdf {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> usize {
         let r = rng.gen_range(0.0..1.0);
         for k in 0..self.cdf.len() {
-            if self.cdf[k] <= r {
+            if r <= self.cdf[k] {
                 return k;
             }
         }

@@ -81,7 +81,7 @@ impl Contribution {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.scalar > 0.0
+        self.scalar == 0.0
     }
 
     pub fn acceptance(
