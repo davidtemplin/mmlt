@@ -126,8 +126,11 @@ pub fn reflect(d: Vector, n: Vector) -> Vector {
 
 #[cfg(test)]
 mod tests {
-    use super::{direction_to_area, erf_inv, geometry_term, orthonormal_basis};
-    use crate::vector::Vector;
+    use super::{
+        concentric_sample_disk, cosine_sample_hemisphere, direction_to_area, erf_inv,
+        geometry_term, orthonormal_basis,
+    };
+    use crate::{sampler::test::MockSampler, vector::Vector};
     use std::f64::consts::PI;
 
     #[test]
@@ -155,6 +158,12 @@ mod tests {
         assert!((u4 - Vector::new(1.0, 0.0, -1.0).norm()).len() < 1e-5);
         assert!((v4 - Vector::new(-1.0, 2.0, -1.0).norm()).len() < 1e-5);
         assert!((w4 - d4.norm()).len() < 1e-5);
+
+        let d5 = Vector::new(0.0, -2.0, 0.0);
+        let (u5, v5, w5) = orthonormal_basis(d5);
+        assert_eq!(u5, Vector::new(1.0, 0.0, 0.0));
+        assert_eq!(v5, Vector::new(0.0, 0.0, 1.0));
+        assert_eq!(w5, Vector::new(0.0, -1.0, 0.0));
     }
 
     #[test]
@@ -182,5 +191,26 @@ mod tests {
         let g = geometry_term(d, n1, n2);
         let e = ((f64::cos(angle1) * f64::cos(angle2)) / (d.len() * d.len())).abs();
         assert!(g - e < 1e-8);
+    }
+
+    #[test]
+    fn test_concentric_sample_disk() {
+        let mut sampler = MockSampler::new();
+        sampler.add(0.2);
+        sampler.add(0.7);
+        let (x, y) = concentric_sample_disk(&mut sampler);
+        assert!(f64::sqrt(x * x + y * y) < 1.0);
+    }
+
+    #[test]
+    fn test_cosine_sample_hemisphere() {
+        let mut sampler = MockSampler::new();
+        sampler.add(0.7);
+        sampler.add(0.5);
+        let n = Vector::new(0.0, -1.0, 0.0);
+        let v = cosine_sample_hemisphere(n, &mut sampler);
+        let tolerance = 1.0e-5;
+        assert!(1.0 - v.len() < tolerance);
+        assert!(v.dot(n) > 0.0);
     }
 }

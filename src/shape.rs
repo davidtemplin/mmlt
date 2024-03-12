@@ -210,6 +210,7 @@ mod tests {
         approx::ApproxEq,
         geometry::Geometry,
         ray::Ray,
+        sampler::test::MockSampler,
         vector::{Point, Vector},
     };
 
@@ -311,5 +312,21 @@ mod tests {
             direction: target - ray_origin,
         };
         assert!(actual.approx_eq(expected, tolerance));
+    }
+
+    #[test]
+    fn test_parallelogram_sample_geometry() {
+        let origin = Point::new(0.3, 1.0, 0.3);
+        let a = Vector::new(0.4, 0.0, 0.0);
+        let b = Vector::new(0.0, 0.0, 0.4);
+        let parallelogram = Parallelogram::new(origin, a, b);
+        let mut sampler = MockSampler::new();
+        sampler.add(0.6);
+        sampler.add(0.25);
+        let geometry = parallelogram.sample_geometry(&mut sampler);
+        assert_eq!(geometry.normal, Vector::new(0.0, -1.0, 0.0));
+        assert_eq!(geometry.direction, Vector::new(0.0, -1.0, 0.0));
+        assert!(a.norm().dot(geometry.point - origin) < 1.0);
+        assert!(b.norm().dot(geometry.point - origin) < 1.0);
     }
 }
