@@ -39,6 +39,7 @@ fn execute() -> Result<(), String> {
     let config = Config::parse(args)?;
     let integrator = MmltIntegrator::new();
     let scene = Scene::load(String::from(config.scene_path))?;
-    let image = integrator.integrate(&scene);
+    let mut image = integrator.integrate(&scene);
+    image.tone_map();
     image.write(config.image_path)
 }
