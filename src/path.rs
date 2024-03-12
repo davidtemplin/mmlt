@@ -327,7 +327,7 @@ impl<'a> Path {
             let next_geometry = interactions.get(index + 1).map(Interaction::geometry);
             match interaction {
                 Interaction::Camera(camera_interaction) => {
-                    pixel_coordinates.replace(camera_interaction.pixel_coordinates);
+                    pixel_coordinates = Some(camera_interaction.pixel_coordinates);
                     let point = camera_interaction.geometry.point;
                     let direction = next_geometry?.point - point;
                     let importance = camera_interaction.camera.importance(point, direction);
@@ -414,18 +414,23 @@ impl<'a> Path {
                     };
                     vertices.push(vertex);
                     let previous_vertex = &mut vertices[index - 1];
-                    let directional_pdf = object_interaction.pdf(wo, wi);
-                    let normal = object_interaction.geometry.normal;
-                    let direction_to_area = util::direction_to_area(wo, normal);
-                    area_pdf = directional_pdf.map(|p| p * direction_to_area);
+                    let previous_normal = previous_geometry?.normal;
+                    let previous_directional_pdf = object_interaction.pdf(wo, wi);
+                    let previous_direction_to_area = util::direction_to_area(wo, previous_normal);
+                    let previous_area_pdf =
+                        previous_directional_pdf.map(|p| p * previous_direction_to_area);
                     match technique.path_type(index - 1) {
                         PathType::Camera => {
-                            previous_vertex.reverse_pdf = area_pdf;
+                            previous_vertex.reverse_pdf = previous_area_pdf;
                         }
                         PathType::Light => {
-                            previous_vertex.forward_pdf = area_pdf;
+                            previous_vertex.forward_pdf = previous_area_pdf;
                         }
                     }
+                    let next_normal = next_geometry?.normal;
+                    let next_directional_pdf = object_interaction.pdf(wi, wo);
+                    let next_direction_to_area = util::direction_to_area(wi, next_normal);
+                    area_pdf = next_directional_pdf.map(|p| p * next_direction_to_area);
                 }
             }
 
