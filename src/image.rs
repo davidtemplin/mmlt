@@ -73,33 +73,6 @@ impl Image {
             self.pixels[i] = self.pixels[i] * s;
         }
     }
-
-    pub fn tone_map(&mut self) {
-        let min = self
-            .pixels
-            .iter()
-            .map(|p| p.luminance())
-            .min_by(f64::total_cmp)
-            .unwrap();
-
-        let max = self
-            .pixels
-            .iter()
-            .map(|p| p.luminance())
-            .max_by(f64::total_cmp)
-            .unwrap();
-
-        println!("min = {}, max = {}", min, max);
-
-        for i in 0..self.pixels.len() {
-            let l_in = self.pixels[i].luminance();
-            if l_in > 0.0 {
-                let l_out = 65536.0 * (l_in - min) / (max - min);
-                let scale = l_out / l_in;
-                self.pixels[i] = self.pixels[i] * scale;
-            }
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
