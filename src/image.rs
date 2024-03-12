@@ -40,7 +40,11 @@ impl Image {
 
     pub fn contribute(&mut self, spectrum: Spectrum, coordinates: PixelCoordinates) {
         let i = coordinates.y * self.width + coordinates.x;
-        self.pixels[i] = self.pixels[i] + spectrum;
+        if !spectrum.has_nans() {
+            self.pixels[i] = self.pixels[i] + spectrum;
+        } else {
+            println!("warning: NaN detected");
+        }
     }
 
     pub fn write(&self, path: String) -> Result<(), String> {
@@ -89,9 +93,11 @@ impl Image {
 
         for i in 0..self.pixels.len() {
             let l_in = self.pixels[i].luminance();
-            let l_out = 65536.0 * (l_in - min) / (max - min);
-            let scale = l_out / l_in;
-            self.pixels[i] = self.pixels[i] * scale;
+            if l_in > 0.0 {
+                let l_out = 65536.0 * (l_in - min) / (max - min);
+                let scale = l_out / l_in;
+                self.pixels[i] = self.pixels[i] * scale;
+            }
         }
     }
 }

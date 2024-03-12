@@ -40,6 +40,7 @@ fn execute() -> Result<(), String> {
     let integrator = MmltIntegrator::new();
     let scene = Scene::load(String::from(config.scene_path))?;
     let mut image = integrator.integrate(&scene);
+    image.write(config.image_path)?;
     image.tone_map();
-    image.write(config.image_path)
+    image.write(String::from("/Users/david/Desktop/image-tone-mapped.pfm"))
 }

@@ -53,6 +53,10 @@ impl RgbSpectrum {
     pub fn to_rgb(&self) -> RgbSpectrum {
         self.clone()
     }
+
+    pub fn has_nans(&self) -> bool {
+        self.r.is_nan() || self.g.is_nan() || self.b.is_nan()
+    }
 }
 
 impl Add<RgbSpectrum> for RgbSpectrum {
