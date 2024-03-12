@@ -63,7 +63,7 @@ pub fn concentric_sample_disk(sampler: &mut dyn Sampler) -> (f64, f64) {
     } else {
         (
             u_offset_y,
-            (PI / 2.0 - PI / 4.0) * (u_offset_x / u_offset_y),
+            (PI / 2.0) - ((PI / 4.0) * (u_offset_x / u_offset_y)),
         )
     };
 
