@@ -452,10 +452,17 @@ impl<'a> Path {
             return Contribution::empty();
         }
 
-        let c = self.throughput() * self.weight() / p;
-        if c.is_black() {
+        let t = self.throughput();
+        if t.is_black() {
             return Contribution::empty();
         }
+
+        let w = self.weight();
+        if w == 0.0 {
+            return Contribution::empty();
+        }
+
+        let c = t * w / p;
 
         Contribution {
             scalar: c.luminance(),
