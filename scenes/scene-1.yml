@@ -23,7 +23,7 @@ lights:
       origin: { x: 0.3, y: 1.0, z: 0.3 }
       a: { x: 0.4, y: 0.0, z: 0.0 }
       b: { x: 0.0, y: 0.0, z: 0.4 }
-    spectrum: { r: 100.0, g: 100.0, b: 100.0 }
+    spectrum: { r: 2000.0, g: 2000.0, b: 2000.0 }
 
 objects:
   - id: left_wall
