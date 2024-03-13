@@ -3,6 +3,7 @@ use std::{
     io::{self, LineWriter, Write},
 };
 
+use exr::image::write::write_rgb_file;
 use serde::{Deserialize, Serialize};
 
 use crate::spectrum::Spectrum;
@@ -48,6 +49,16 @@ impl Image {
     }
 
     pub fn write(&self, path: String) -> Result<(), String> {
+        if path.ends_with(".pfm") {
+            self.write_pfm(path)
+        } else if path.ends_with(".exr") {
+            self.write_exr(path)
+        } else {
+            Err(String::from("unknown image type"))
+        }
+    }
+
+    fn write_pfm(&self, path: String) -> Result<(), String> {
         let m = |e: io::Error| e.to_string();
         let file = File::create(path).map_err(m)?;
         let mut writer = LineWriter::new(file);
@@ -66,6 +77,16 @@ impl Image {
         }
         writer.flush().map_err(m)?;
         Ok(())
+    }
+
+    fn write_exr(&self, path: String) -> Result<(), String> {
+        write_rgb_file(path, self.width, self.height, |x, y| {
+            let i = y * self.width + x;
+            let pixel = self.pixels[i];
+            let rgb = pixel.to_rgb();
+            (rgb.r as f32, rgb.g as f32, rgb.b as f32)
+        })
+        .map_err(|e| e.to_string())
     }
 
     pub fn scale(&mut self, s: f64) {
