@@ -394,7 +394,7 @@ impl<'a> Path {
                             }
                         }
                         PathType::Light => {
-                            let throughput = object_interaction.reflectance(wi, wo);
+                            let throughput = object_interaction.reflectance(wo, wi);
                             Vertex {
                                 throughput,
                                 forward_pdf: None,
