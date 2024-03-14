@@ -44,7 +44,7 @@ impl Image {
         if !spectrum.has_nans() {
             self.pixels[i] = self.pixels[i] + spectrum;
         } else {
-            println!("warning: NaN detected");
+            eprintln!("warning: NaN detected");
         }
     }
 

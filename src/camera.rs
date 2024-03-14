@@ -101,7 +101,7 @@ impl Camera for PinholeCamera {
                 camera: self,
                 geometry: Geometry {
                     point: self.origin,
-                    direction: d,
+                    direction: ray.origin - self.origin,
                     normal: self.w,
                 },
                 pixel_coordinates: PixelCoordinates::new(px.round() as usize, py.round() as usize),
