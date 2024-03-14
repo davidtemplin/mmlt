@@ -28,11 +28,19 @@ pub struct Vertex {
 
 impl Vertex {
     fn camera_path_weight(&self) -> Option<f64> {
-        Some(self.reverse_pdf? / self.forward_pdf?)
+        if self.forward_pdf? != 0.0 {
+            Some(self.reverse_pdf? / self.forward_pdf?)
+        } else {
+            None
+        }
     }
 
     fn light_path_weight(&self) -> Option<f64> {
-        Some(self.forward_pdf? / self.reverse_pdf?)
+        if self.reverse_pdf? != 0.0 {
+            Some(self.forward_pdf? / self.reverse_pdf?)
+        } else {
+            None
+        }
     }
 }
 
@@ -392,25 +400,24 @@ impl<'a> Path {
                 }
                 Interaction::Object(object_interaction) => {
                     let point = object_interaction.geometry.point;
+                    let normal = object_interaction.geometry.normal;
+                    let next_normal = next_geometry?.normal;
                     let wo = previous_geometry?.point - point;
                     let wi = next_geometry?.point - point;
+                    let reflectance = object_interaction.reflectance(wo, wi);
+                    let geometry_term = util::geometry_term(wi, normal, next_normal);
+                    let throughput = reflectance * geometry_term;
                     let vertex = match technique.path_type(index) {
-                        PathType::Camera => {
-                            let throughput = object_interaction.reflectance(wo, wi);
-                            Vertex {
-                                throughput,
-                                forward_pdf: area_pdf,
-                                reverse_pdf: None,
-                            }
-                        }
-                        PathType::Light => {
-                            let throughput = object_interaction.reflectance(wo, wi);
-                            Vertex {
-                                throughput,
-                                forward_pdf: None,
-                                reverse_pdf: area_pdf,
-                            }
-                        }
+                        PathType::Camera => Vertex {
+                            throughput,
+                            forward_pdf: area_pdf,
+                            reverse_pdf: None,
+                        },
+                        PathType::Light => Vertex {
+                            throughput,
+                            forward_pdf: None,
+                            reverse_pdf: area_pdf,
+                        },
                     };
                     vertices.push(vertex);
                     let previous_vertex = &mut vertices[index - 1];
@@ -495,8 +502,10 @@ impl<'a> Path {
                 PathType::Light => vertex.light_path_weight(),
             };
             if let Some(w) = weight {
-                product = product * w;
-                sum = sum + product;
+                if w != 0.0 {
+                    product = product * w;
+                    sum = sum + product;
+                }
             }
         }
 
