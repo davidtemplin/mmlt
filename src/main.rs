@@ -25,6 +25,7 @@ mod scene;
 mod shape;
 mod spectrum;
 mod texture;
+mod types;
 mod util;
 mod vector;
 

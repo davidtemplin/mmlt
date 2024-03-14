@@ -2,7 +2,8 @@ use std::cell::OnceCell;
 
 use crate::{
     bsdf::Bsdf, camera::Camera, geometry::Geometry, image::PixelCoordinates, light::Light,
-    object::Object, ray::Ray, sampler::Sampler, spectrum::Spectrum, vector::Vector,
+    object::Object, ray::Ray, sampler::Sampler, spectrum::Spectrum, types::PathType,
+    vector::Vector,
 };
 
 #[derive(Debug)]
@@ -38,17 +39,20 @@ impl<'a> ObjectInteraction<'a> {
             .get_or_init(|| self.object.compute_bsdf(self.geometry))
     }
 
-    pub fn generate_ray(&self, sampler: &mut dyn Sampler) -> Ray {
-        let wo = self.geometry.direction * -1.0;
-        let direction = self.get_bsdf().sample_direction(wo, sampler).norm();
+    pub fn generate_ray(&self, path_type: PathType, sampler: &mut dyn Sampler) -> Ray {
+        let wx = self.geometry.direction * -1.0;
+        let direction = self
+            .get_bsdf()
+            .sample_direction(wx, path_type, sampler)
+            .norm();
         Ray {
             origin: self.geometry.point,
             direction,
         }
     }
 
-    pub fn pdf(&self, wo: Vector, wi: Vector) -> Option<f64> {
-        self.get_bsdf().pdf(wo, wi)
+    pub fn pdf(&self, wo: Vector, wi: Vector, path_type: PathType) -> Option<f64> {
+        self.get_bsdf().pdf(wo, wi, path_type)
     }
 
     pub fn reflectance(&self, wo: Vector, wi: Vector) -> Spectrum {
@@ -71,12 +75,12 @@ impl<'a> Interaction<'a> {
         }
     }
 
-    pub fn generate_ray(&self, sampler: &mut dyn Sampler) -> Option<Ray> {
+    pub fn generate_ray(&self, path_type: PathType, sampler: &mut dyn Sampler) -> Option<Ray> {
         match self {
             Interaction::Camera(_) => None,
             Interaction::Light(_) => None,
             Interaction::Object(object_interaction) => {
-                Some(object_interaction.generate_ray(sampler))
+                Some(object_interaction.generate_ray(path_type, sampler))
             }
         }
     }

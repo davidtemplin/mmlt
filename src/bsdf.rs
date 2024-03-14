@@ -1,6 +1,6 @@
 use std::{f64::consts::PI, fmt};
 
-use crate::{sampler::Sampler, spectrum::Spectrum, util, vector::Vector};
+use crate::{sampler::Sampler, spectrum::Spectrum, types::PathType, util, vector::Vector};
 
 #[derive(Debug)]
 pub struct Bsdf {
@@ -9,8 +9,13 @@ pub struct Bsdf {
 
 pub trait Bxdf: fmt::Debug {
     fn evaluate(&self, wo: Vector, wi: Vector) -> Spectrum;
-    fn pdf(&self, wo: Vector, wi: Vector) -> Option<f64>;
-    fn sample_direction(&self, wo: Vector, sampler: &mut dyn Sampler) -> Vector;
+    fn pdf(&self, wo: Vector, wi: Vector, path_type: PathType) -> Option<f64>;
+    fn sample_direction(
+        &self,
+        wx: Vector,
+        path_type: PathType,
+        sampler: &mut dyn Sampler,
+    ) -> Vector;
 }
 
 impl Bsdf {
@@ -21,18 +26,23 @@ impl Bsdf {
             .fold(Spectrum::black(), |a, b| a + b)
     }
 
-    pub fn sample_direction(&self, wo: Vector, sampler: &mut dyn Sampler) -> Vector {
+    pub fn sample_direction(
+        &self,
+        wx: Vector,
+        path_type: PathType,
+        sampler: &mut dyn Sampler,
+    ) -> Vector {
         let length = self.bxdfs.len() as f64;
         let r = sampler.sample(0.0..length).floor();
         let i = r as usize;
-        self.bxdfs[i].sample_direction(wo, sampler)
+        self.bxdfs[i].sample_direction(wx, path_type, sampler)
     }
 
-    pub fn pdf(&self, wo: Vector, wi: Vector) -> Option<f64> {
+    pub fn pdf(&self, wo: Vector, wi: Vector, path_type: PathType) -> Option<f64> {
         let mut count = 0;
         let mut sum = 0.0;
         for bxdf in &self.bxdfs {
-            let result = bxdf.pdf(wo, wi);
+            let result = bxdf.pdf(wo, wi, path_type);
             if result.is_some() {
                 count = count + 1;
             }
@@ -69,7 +79,7 @@ impl Bxdf for DiffuseBrdf {
         }
     }
 
-    fn pdf(&self, wo: Vector, wi: Vector) -> Option<f64> {
+    fn pdf(&self, wo: Vector, wi: Vector, _: PathType) -> Option<f64> {
         let p = if util::same_hemisphere(self.normal, wo, wi) {
             util::abs_cos_theta(self.normal, wi) / PI
         } else {
@@ -78,7 +88,7 @@ impl Bxdf for DiffuseBrdf {
         Some(p)
     }
 
-    fn sample_direction(&self, wo: Vector, sampler: &mut dyn Sampler) -> Vector {
+    fn sample_direction(&self, wo: Vector, _: PathType, sampler: &mut dyn Sampler) -> Vector {
         let wi = util::cosine_sample_hemisphere(self.normal, sampler);
         if util::same_hemisphere(self.normal, wi, wo) {
             wi
@@ -111,19 +121,22 @@ impl Bxdf for SpecularBrdf {
         }
     }
 
-    fn pdf(&self, _wo: Vector, _wi: Vector) -> Option<f64> {
+    fn pdf(&self, _: Vector, _: Vector, _: PathType) -> Option<f64> {
         None
     }
 
-    fn sample_direction(&self, wo: Vector, _sampler: &mut dyn Sampler) -> Vector {
-        util::reflect(wo, self.normal)
+    fn sample_direction(&self, wx: Vector, _: PathType, _: &mut dyn Sampler) -> Vector {
+        util::reflect(wx, self.normal)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{Bxdf, DiffuseBrdf, SpecularBrdf};
-    use crate::{bsdf::Bsdf, sampler::test::MockSampler, spectrum::Spectrum, util, vector::Vector};
+    use crate::{
+        bsdf::Bsdf, sampler::test::MockSampler, spectrum::Spectrum, types::PathType, util,
+        vector::Vector,
+    };
     use std::f64::consts::PI;
 
     #[test]
@@ -157,7 +170,7 @@ mod tests {
         let brdf = DiffuseBrdf::new(normal, scale);
         let wo = Vector::new(1.0, 1.0, 0.0);
         let wi = Vector::new(-1.0, 1.0, 0.0);
-        let actual = brdf.pdf(wo, wi);
+        let actual = brdf.pdf(wo, wi, PathType::Camera);
         let expected = Some(util::abs_cos_theta(normal, wi) / PI);
         assert_eq!(actual, expected);
     }
@@ -169,7 +182,7 @@ mod tests {
         let brdf = DiffuseBrdf::new(normal, scale);
         let wo = Vector::new(1.0, 1.0, 0.0);
         let wi = Vector::new(-1.0, -1.0, 0.0);
-        let actual = brdf.pdf(wo, wi);
+        let actual = brdf.pdf(wo, wi, PathType::Camera);
         let expected = Some(0.0);
         assert_eq!(actual, expected);
     }
@@ -183,7 +196,7 @@ mod tests {
         let mut sampler = MockSampler::new();
         sampler.add(0.25);
         sampler.add(0.25);
-        let direction = brdf.sample_direction(wo, &mut sampler);
+        let direction = brdf.sample_direction(wo, PathType::Camera, &mut sampler);
         assert!(normal.dot(direction).is_sign_positive());
     }
 
@@ -196,7 +209,7 @@ mod tests {
         let mut sampler = MockSampler::new();
         sampler.add(0.25);
         sampler.add(0.25);
-        let direction = brdf.sample_direction(wo, &mut sampler);
+        let direction = brdf.sample_direction(wo, PathType::Camera, &mut sampler);
         assert!(normal.dot(direction).is_sign_positive());
     }
 
@@ -229,7 +242,7 @@ mod tests {
         let brdf = SpecularBrdf::new(normal, scale);
         let wo = Vector::new(1.0, 1.0, 0.0);
         let wi = Vector::new(-1.0, 1.0, 0.0);
-        let actual = brdf.pdf(wo, wi);
+        let actual = brdf.pdf(wo, wi, PathType::Camera);
         assert_eq!(actual, None);
     }
 
@@ -240,7 +253,7 @@ mod tests {
         let wo = Vector::new(1.0, 1.0, 0.0);
         let brdf = SpecularBrdf::new(normal, scale);
         let mut sampler = MockSampler::new();
-        let direction = brdf.sample_direction(wo, &mut sampler);
+        let direction = brdf.sample_direction(wo, PathType::Camera, &mut sampler);
         let expected = util::reflect(wo, normal);
         assert_eq!(direction, expected);
     }
@@ -272,7 +285,7 @@ mod tests {
         let bsdf = Bsdf {
             bxdfs: vec![Box::new(brdf1), Box::new(brdf2)],
         };
-        let actual = bsdf.pdf(wo, wi);
+        let actual = bsdf.pdf(wo, wi, PathType::Camera);
         let expected = Some((util::abs_cos_theta(normal, wi) / PI) / 2.0);
         assert_eq!(actual, expected);
     }
@@ -289,7 +302,7 @@ mod tests {
         };
         let mut sampler = MockSampler::new();
         sampler.add(0.9);
-        let actual = bsdf.sample_direction(wo, &mut sampler);
+        let actual = bsdf.sample_direction(wo, PathType::Camera, &mut sampler);
         let expected = util::reflect(wo, normal);
         assert_eq!(actual, expected);
     }

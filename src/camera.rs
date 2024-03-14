@@ -365,7 +365,7 @@ mod tests {
                     camera_interaction.geometry.point,
                     camera.distance * camera.origin
                 );
-                assert_eq!(camera_interaction.geometry.direction, -ray_direction);
+                assert_eq!(camera_interaction.geometry.direction, ray_origin - origin);
             }
             _ => panic!(),
         }

@@ -8,6 +8,7 @@ use crate::{
     sampler::{MmltSampler, Sampler},
     scene::Scene,
     spectrum::Spectrum,
+    types::PathType,
     util,
 };
 
@@ -16,12 +17,6 @@ pub struct Path {
     vertices: Vec<Vertex>,
     technique: Technique,
     pixel_coordinates: PixelCoordinates,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum PathType {
-    Camera,
-    Light,
 }
 
 #[derive(Debug)]
@@ -57,11 +52,6 @@ impl Technique {
             PathType::Light
         }
     }
-}
-
-enum Direction {
-    Forward,
-    Reverse,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -180,7 +170,7 @@ impl<'a> Path {
             sampler,
             light_interaction,
             technique.light,
-            Direction::Reverse,
+            PathType::Light,
         )?;
         interactions.front().filter(|i| i.is_camera())?;
         Path::connect(&mut interactions, technique)
@@ -198,7 +188,7 @@ impl<'a> Path {
             sampler,
             camera_interaction,
             technique.camera,
-            Direction::Forward,
+            PathType::Camera,
         )?;
         interactions.back().filter(|i| i.is_light())?;
         Path::connect(&mut interactions, technique)
@@ -217,7 +207,7 @@ impl<'a> Path {
             sampler,
             light_interaction,
             technique.light,
-            Direction::Reverse,
+            PathType::Light,
         )?;
         let last = interactions.front().filter(|i| i.is_object())?;
         sampler.start_stream(CAMERA_STREAM);
@@ -243,7 +233,7 @@ impl<'a> Path {
             sampler,
             camera_interaction,
             technique.camera,
-            Direction::Forward,
+            PathType::Camera,
         )?;
         let last = interactions.back().filter(|i| i.is_object())?;
         sampler.start_stream(LIGHT_STREAM);
@@ -270,7 +260,7 @@ impl<'a> Path {
             sampler,
             camera_interaction,
             technique.camera,
-            Direction::Forward,
+            PathType::Camera,
         )?;
         sampler.start_stream(LIGHT_STREAM);
         let light = scene.sample_light(sampler);
@@ -280,7 +270,7 @@ impl<'a> Path {
             sampler,
             light_interaction,
             technique.light,
-            Direction::Reverse,
+            PathType::Light,
         )?;
         let camera_last = camera_interactions.back().filter(|i| i.is_object())?;
         let light_last = light_interactions.front().filter(|i| i.is_object())?;
@@ -299,20 +289,20 @@ impl<'a> Path {
         sampler: &mut impl Sampler,
         interaction: Interaction<'a>,
         length: usize,
-        direction: Direction,
+        path_type: PathType,
     ) -> Option<VecDeque<Interaction<'a>>> {
         let mut stack: VecDeque<Interaction<'a>> = VecDeque::new();
         let mut ray = interaction.initial_ray()?;
-        match direction {
-            Direction::Forward => stack.push_back(interaction),
-            Direction::Reverse => stack.push_front(interaction),
+        match path_type {
+            PathType::Camera => stack.push_back(interaction),
+            PathType::Light => stack.push_front(interaction),
         };
         for _ in 1..length {
             let interaction = scene.intersect(ray)?;
-            ray = interaction.generate_ray(sampler)?;
-            match direction {
-                Direction::Forward => stack.push_back(interaction),
-                Direction::Reverse => stack.push_front(interaction),
+            ray = interaction.generate_ray(path_type, sampler)?;
+            match path_type {
+                PathType::Camera => stack.push_back(interaction),
+                PathType::Light => stack.push_front(interaction),
             };
         }
         Some(stack)
@@ -415,7 +405,7 @@ impl<'a> Path {
                     vertices.push(vertex);
                     let previous_vertex = &mut vertices[index - 1];
                     let previous_normal = previous_geometry?.normal;
-                    let previous_directional_pdf = object_interaction.pdf(wo, wi);
+                    let previous_directional_pdf = object_interaction.pdf(wo, wi, PathType::Light);
                     let previous_direction_to_area = util::direction_to_area(wo, previous_normal);
                     let previous_area_pdf =
                         previous_directional_pdf.map(|p| p * previous_direction_to_area);
@@ -428,7 +418,7 @@ impl<'a> Path {
                         }
                     }
                     let next_normal = next_geometry?.normal;
-                    let next_directional_pdf = object_interaction.pdf(wi, wo);
+                    let next_directional_pdf = object_interaction.pdf(wo, wi, PathType::Camera);
                     let next_direction_to_area = util::direction_to_area(wi, next_normal);
                     area_pdf = next_directional_pdf.map(|p| p * next_direction_to_area);
                 }
