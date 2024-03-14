@@ -26,6 +26,16 @@ pub struct Vertex {
     reverse_pdf: Option<f64>,
 }
 
+impl Vertex {
+    fn camera_path_weight(&self) -> Option<f64> {
+        Some(self.reverse_pdf? / self.forward_pdf?)
+    }
+
+    fn light_path_weight(&self) -> Option<f64> {
+        Some(self.forward_pdf? / self.reverse_pdf?)
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct Technique {
     camera: usize,
@@ -476,27 +486,21 @@ impl<'a> Path {
     }
 
     pub fn weight(&self) -> f64 {
-        let camera_subpath = &self.vertices[0..self.technique.camera];
-        let light_subpath = &self.vertices[self.technique.light..];
-        let fold = |(product, sum): (f64, f64), result: Option<f64>| -> (f64, f64) {
-            match result {
-                Some(weight) => {
-                    let p = product * weight;
-                    (p, sum + p)
-                }
-                None => (product, sum),
+        let mut product = 1.0;
+        let mut sum = 0.0;
+        for (index, vertex) in self.vertices.iter().enumerate() {
+            let path_type = self.technique.path_type(index);
+            let weight = match path_type {
+                PathType::Camera => vertex.camera_path_weight(),
+                PathType::Light => vertex.light_path_weight(),
+            };
+            if let Some(w) = weight {
+                product = product * w;
+                sum = sum + product;
             }
-        };
-        let (_, sum1) = camera_subpath
-            .iter()
-            .map(|v| Some(v.reverse_pdf? / v.forward_pdf?))
-            .fold((1.0, 0.0), fold);
-        let (_, sum2) = light_subpath
-            .iter()
-            .rev()
-            .map(|v| Some(v.forward_pdf? / v.reverse_pdf?))
-            .fold((1.0, 0.0), fold);
-        1.0 / (1.0 + sum1 + sum2)
+        }
+
+        1.0 / (1.0 + sum)
     }
 }
 
