@@ -86,6 +86,7 @@ impl Integrator for MmltIntegrator {
 
             if rng.gen_range(0.0..1.0) <= a {
                 sampler.accept();
+                contributions[k] = proposal_contribution;
             } else {
                 sampler.reject();
             }

@@ -37,3 +37,19 @@ impl Distribution<usize> for Pdf {
         0
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Pdf;
+
+    #[test]
+    fn test_pdf_value() {
+        let h = vec![10.0, 20.0, 50.0, 15.0, 5.0];
+        let pdf = Pdf::new(&h);
+        assert_eq!(pdf.value(0), 0.1);
+        assert_eq!(pdf.value(1), 0.2);
+        assert_eq!(pdf.value(2), 0.5);
+        assert_eq!(pdf.value(3), 0.15);
+        assert_eq!(pdf.value(4), 0.05);
+    }
+}

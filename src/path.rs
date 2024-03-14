@@ -502,8 +502,8 @@ impl<'a> Path {
 
 #[cfg(test)]
 mod tests {
-    use super::{PathType, Technique};
-    use crate::sampler::test::MockSampler;
+    use super::{Contribution, PathType, Technique};
+    use crate::{image::PixelCoordinates, sampler::test::MockSampler, spectrum::RgbSpectrum};
 
     #[test]
     fn test_technique_sample() {
@@ -532,5 +532,25 @@ mod tests {
         assert_eq!(technique.path_type(1), PathType::Camera);
         assert_eq!(technique.path_type(2), PathType::Light);
         assert_eq!(technique.path_type(3), PathType::Light);
+    }
+
+    #[test]
+    fn test_contribution_acceptance() {
+        let spectrum1 = RgbSpectrum::fill(0.1);
+        let current = Contribution {
+            scalar: spectrum1.luminance(),
+            spectrum: spectrum1,
+            pixel_coordinates: PixelCoordinates { x: 100, y: 100 },
+        };
+
+        let spectrum2 = RgbSpectrum::fill(0.05);
+        let proposed = Contribution {
+            scalar: spectrum2.luminance(),
+            spectrum: spectrum2,
+            pixel_coordinates: PixelCoordinates { x: 100, y: 100 },
+        };
+
+        let a = Contribution::acceptance(current, proposed);
+        assert_eq!(a, 0.5);
     }
 }
