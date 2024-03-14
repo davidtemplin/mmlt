@@ -1,9 +1,11 @@
 use rand::{distributions::Distribution, thread_rng, Rng};
 
 use crate::{
+    config::Config,
     image::Image,
     path::{Contribution, Path},
     pdf::Pdf,
+    progress::{report, report_progress},
     sampler::{MmltSampler, MutationType},
     scene::Scene,
 };
@@ -19,17 +21,19 @@ pub struct MmltIntegrator {
 }
 
 impl MmltIntegrator {
-    pub fn new() -> MmltIntegrator {
+    pub fn new(config: &Config) -> MmltIntegrator {
         MmltIntegrator {
-            max_path_length: 20,
-            initial_sample_count: 100_000,
-            average_samples_per_pixel: 100,
+            max_path_length: config.max_path_length.unwrap_or(20),
+            initial_sample_count: config.initial_sample_count.unwrap_or(100_000),
+            average_samples_per_pixel: config.average_samples_per_pixel.unwrap_or(4096),
         }
     }
 }
 
 impl Integrator for MmltIntegrator {
     fn integrate(&self, scene: &Scene) -> Image {
+        report("Initializing MMLT integrator...");
+
         let mut b = vec![0.0; self.max_path_length - 1];
         let mut rng = thread_rng();
 
@@ -40,6 +44,7 @@ impl Integrator for MmltIntegrator {
                 b[k] = b[k] + contribution.scalar;
             }
             b[k] = b[k] / self.initial_sample_count as f64;
+            report_progress((k + 1) as f64 / (self.max_path_length - 1) as f64);
         }
 
         let pdf = Pdf::new(&b);
@@ -56,8 +61,17 @@ impl Integrator for MmltIntegrator {
         let mut sample_count: u64 = 0;
         let mut image = Image::configure(&scene.image_config);
         let pixel_count = (scene.image_config.width * scene.image_config.height) as u64;
+        let mut spp = 0;
+        let mut last_reported_spp = 0;
 
-        while sample_count / pixel_count < self.average_samples_per_pixel {
+        report("\nIntegrating...");
+
+        while spp < self.average_samples_per_pixel {
+            spp = sample_count / pixel_count;
+            if last_reported_spp < spp {
+                report_progress(spp as f64 / self.average_samples_per_pixel as f64);
+                last_reported_spp = spp;
+            }
             sample_count = sample_count + 1;
             let k = pdf.sample(&mut rng);
             let sampler = &mut samplers[k];
@@ -93,6 +107,8 @@ impl Integrator for MmltIntegrator {
         }
 
         image.scale(1.0 / self.average_samples_per_pixel as f64);
+
+        report("\nMMLT integration complete");
 
         image
     }
