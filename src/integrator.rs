@@ -64,7 +64,7 @@ impl Integrator for MmltIntegrator {
         let mut spp = 0;
         let mut last_reported_spp = 0;
 
-        report("\nIntegrating...");
+        report("Integrating...");
 
         while spp < self.average_samples_per_pixel {
             spp = sample_count / pixel_count;
@@ -108,7 +108,7 @@ impl Integrator for MmltIntegrator {
 
         image.scale(1.0 / self.average_samples_per_pixel as f64);
 
-        report("\nMMLT integration complete");
+        report("MMLT integration complete");
 
         image
     }
