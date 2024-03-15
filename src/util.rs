@@ -58,7 +58,7 @@ pub fn concentric_sample_disk(sampler: &mut dyn Sampler) -> (f64, f64) {
     }
 
     // Apply concentric mapping to point
-    let (theta, r) = if u_offset_x.abs() > u_offset_y.abs() {
+    let (r, theta) = if u_offset_x.abs() > u_offset_y.abs() {
         (u_offset_x, (PI / 4.0) * (u_offset_y / u_offset_x))
     } else {
         (

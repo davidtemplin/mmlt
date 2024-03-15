@@ -200,12 +200,21 @@ mod tests {
         let mut sampler = MockSampler::new();
         sampler.add(0.7);
         sampler.add(0.25);
+        sampler.add(0.6);
+        sampler.add(0.15);
         if let Interaction::Light(light_interaction) = light.sample_interaction(&mut sampler) {
             assert_eq!(
                 light_interaction.geometry.normal,
                 Vector::new(0.0, -1.0, 0.0)
             );
             assert!(1.0 - light_interaction.geometry.direction.len() < 1.0e-5);
+            assert!(
+                light_interaction
+                    .geometry
+                    .normal
+                    .dot(light_interaction.geometry.direction)
+                    > 0.0
+            );
         } else {
             panic!("expected light interaction");
         }
