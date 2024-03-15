@@ -3,6 +3,7 @@ use std::{f64::consts::PI, fmt};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    approx::ApproxEq,
     geometry::Geometry,
     image::PixelCoordinates,
     interaction::{CameraInteraction, Interaction},
@@ -88,14 +89,23 @@ impl Camera for PinholeCamera {
             0.0
         };
         let i = ray.origin + t * ray.direction;
-        if (i - self.origin).len() > 1e-4 {
+        let tolerance = 1e-6;
+        if !i.approx_eq(self.origin, tolerance) {
             return None;
         }
         let d = (ray.origin - self.origin).norm();
         let screen_center = self.origin + (self.w * self.distance);
-        let screen_position = self.origin + d * (self.distance / d.dot(self.w)) - screen_center;
-        let px = self.u.dot(screen_position) + self.pixel_width * 0.5;
-        let py = -self.v.dot(screen_position) + self.pixel_height * 0.5;
+        let wd = self.w.dot(d);
+        if wd == 0.0 {
+            return None;
+        }
+        let t = self.w.dot(screen_center - self.origin) / wd;
+        if t <= 0.0 {
+            return None;
+        }
+        let p = (self.origin + t * d) - screen_center;
+        let px = self.u.dot(p) + self.pixel_width * 0.5;
+        let py = -self.v.dot(p) + self.pixel_height * 0.5;
         if (0.0..self.pixel_width).contains(&px) && (0.0..self.pixel_height).contains(&py) {
             let camera_interaction = CameraInteraction {
                 camera: self,
@@ -344,7 +354,7 @@ mod tests {
     }
 
     #[test]
-    fn test_pinhole_camera_intersect() {
+    fn test_pinhole_camera_intersect_hit() {
         let origin = Point::new(0.0, 0.0, 0.0);
         let look_at = Vector::new(0.0, 0.0, 50.0);
         let field_of_view = 60.0 * PI / 180.0;
@@ -367,7 +377,22 @@ mod tests {
                 );
                 assert_eq!(camera_interaction.geometry.direction, ray_origin - origin);
             }
-            _ => panic!(),
+            _ => panic!("expected camera interaction"),
         }
+    }
+
+    #[test]
+    fn test_pinhole_camera_intersect_miss() {
+        let origin = Point::new(0.5, 0.1, 0.01);
+        let look_at = Vector::new(0.5, 0.9, 0.5);
+        let field_of_view = 60.0 * PI / 180.0;
+        let image_width = 512;
+        let image_height = 512;
+        let camera = PinholeCamera::new(origin, look_at, field_of_view, image_width, image_height);
+        let ray_origin = Point::new(0.49277762278284754, 0.040182486681127116, 0.0);
+        let ray_direction = (origin - ray_origin).norm();
+        let ray = Ray::new(ray_origin, ray_direction);
+        let interaction = camera.intersect(ray);
+        assert!(interaction.is_none());
     }
 }

@@ -94,6 +94,7 @@ mod tests {
         let scene_path = "/path/to/scene.yml";
         let image_path = "/path/to/image.yml";
         let args = vec![
+            String::from("mmlt"),
             String::from("--scene"),
             String::from(scene_path),
             String::from("--image"),
