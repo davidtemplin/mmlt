@@ -123,8 +123,9 @@ impl Shape for Parallelogram {
         let normal = self.a.cross(self.b).norm();
 
         let nd = normal.dot(ray.direction);
+        let threshold = 1e-6;
 
-        if nd == 0.0 {
+        if nd.abs() < threshold {
             return None;
         }
 
@@ -152,7 +153,6 @@ impl Shape for Parallelogram {
         let sa = da / d;
         let sb = db / d;
 
-        let threshold = 1e-4;
         let min = -threshold;
         let max = 1.0 + threshold;
         let range = min..max;
