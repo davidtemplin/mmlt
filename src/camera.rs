@@ -94,16 +94,16 @@ impl Camera for PinholeCamera {
             return None;
         }
         let d = (ray.origin - self.origin).norm();
-        let screen_center = self.origin + (self.w * self.distance);
+        let screen_center = self.w * self.distance;
         let wd = self.w.dot(d);
         if wd == 0.0 {
             return None;
         }
-        let t = self.w.dot(screen_center - self.origin) / wd;
+        let t = self.w.dot(screen_center) / wd;
         if t <= 0.0 {
             return None;
         }
-        let p = (self.origin + t * d) - screen_center;
+        let p = t * d - screen_center;
         let px = self.u.dot(p) + self.pixel_width * 0.5;
         let py = -self.v.dot(p) + self.pixel_height * 0.5;
         if (0.0..self.pixel_width).contains(&px) && (0.0..self.pixel_height).contains(&py) {
