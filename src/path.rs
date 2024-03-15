@@ -235,7 +235,7 @@ impl<'a> Path {
             sampled_camera_interaction.geometry().point - last.geometry().point,
         );
         let camera_interaction = scene.intersect(ray).filter(|i| i.is_camera())?;
-        interactions.push_back(camera_interaction);
+        interactions.push_front(camera_interaction);
         Path::connect(&mut interactions, technique)
     }
 

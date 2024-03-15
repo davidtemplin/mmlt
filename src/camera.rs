@@ -104,7 +104,7 @@ impl Camera for PinholeCamera {
                     direction: ray.origin - self.origin,
                     normal: self.w,
                 },
-                pixel_coordinates: PixelCoordinates::new(px.round() as usize, py.round() as usize),
+                pixel_coordinates: PixelCoordinates::new(px as usize, py as usize),
             };
             let interaction = Interaction::Camera(camera_interaction);
             Some(interaction)
