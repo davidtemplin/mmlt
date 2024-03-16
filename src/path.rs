@@ -27,7 +27,7 @@ pub struct Vertex {
 }
 
 impl Vertex {
-    fn camera_path_weight(&self) -> Option<f64> {
+    fn weight(&self) -> Option<f64> {
         if self.forward_pdf.is_none() && self.reverse_pdf.is_none() {
             None
         } else {
@@ -37,20 +37,6 @@ impl Vertex {
                 Some(rev / fwd)
             } else {
                 Some(rev)
-            }
-        }
-    }
-
-    fn light_path_weight(&self) -> Option<f64> {
-        if self.forward_pdf.is_none() && self.reverse_pdf.is_none() {
-            None
-        } else {
-            let fwd = self.forward_pdf.unwrap_or(1.0);
-            let rev = self.reverse_pdf.unwrap_or(1.0);
-            if rev != 0.0 {
-                Some(fwd / rev)
-            } else {
-                Some(fwd)
             }
         }
     }
@@ -509,7 +495,7 @@ impl<'a> Path {
         let mut sum = 0.0;
 
         for vertex in self.vertices[0..self.technique.camera].iter().rev() {
-            if let Some(w) = vertex.camera_path_weight() {
+            if let Some(w) = vertex.weight() {
                 if w != 0.0 {
                     product = product * w;
                     sum = sum + product;
@@ -518,8 +504,8 @@ impl<'a> Path {
         }
 
         if self.technique.light >= 2 {
-            for vertex in self.vertices[self.technique.camera..].iter() {
-                if let Some(w) = vertex.light_path_weight() {
+            for vertex in self.vertices[self.technique.camera + 1..].iter() {
+                if let Some(w) = vertex.weight() {
                     if w != 0.0 {
                         product = product * w;
                         sum = sum + product;
