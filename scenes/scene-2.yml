@@ -22,7 +22,7 @@ lights:
       type: sphere
       center: { x: 10.0, y: 70.0, z: 51.6 }
       radius: 6.0
-    spectrum: { r: 100.0, g: 100.0, b: 100.0 }
+    spectrum: { r: 31.8309886184, g: 31.8309886184, b: 31.8309886184 }
 
 objects:
   - id: right_wall
