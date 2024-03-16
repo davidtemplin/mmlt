@@ -53,6 +53,8 @@ impl Image {
             self.write_pfm(path)
         } else if path.ends_with(".exr") {
             self.write_exr(path)
+        } else if path.ends_with("ppm") {
+            self.write_ppm(path)
         } else {
             Err(String::from("unknown image type"))
         }
@@ -73,6 +75,34 @@ impl Image {
                 writer.write(&(rgb.r as f32).to_le_bytes()).map_err(m)?;
                 writer.write(&(rgb.g as f32).to_le_bytes()).map_err(m)?;
                 writer.write(&(rgb.b as f32).to_le_bytes()).map_err(m)?;
+            }
+        }
+        writer.flush().map_err(m)?;
+        Ok(())
+    }
+
+    fn write_ppm(&self, path: String) -> Result<(), String> {
+        let m = |e: io::Error| e.to_string();
+        let file = File::create(path).map_err(m)?;
+        let mut writer = LineWriter::new(file);
+        writeln!(writer, "P6").map_err(m)?;
+        writeln!(writer, "{} {}", self.width, self.height).map_err(m)?;
+        writeln!(writer, "255").map_err(m)?;
+        let correct = |value: f64| -> [u8; 1] {
+            let tone_mapped_value = 1.0 - f64::exp(-value);
+            let gamma_corrected_value = f64::powf(tone_mapped_value, 1.0 / 2.2);
+            let scaled_value = gamma_corrected_value * 255.0;
+            let byte_value = (scaled_value + 0.5) as u8;
+            byte_value.to_be_bytes()
+        };
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let i = (y * self.width + x) as usize;
+                let pixel = self.pixels[i];
+                let rgb = pixel.to_rgb();
+                writer.write(&correct(rgb.r)).map_err(m)?;
+                writer.write(&correct(rgb.g)).map_err(m)?;
+                writer.write(&correct(rgb.b)).map_err(m)?;
             }
         }
         writer.flush().map_err(m)?;
