@@ -39,9 +39,9 @@ impl Camera for PinholeCamera {
     fn importance(&self, _point: Point, direction: Vector) -> Spectrum {
         let c = direction.norm().dot(self.w);
         let a = self.pixel_width * self.pixel_height;
-        let c2 = c * c;
-        let c4 = c2 * c2;
-        Spectrum::fill(1.0 / (a * c4))
+        let c4 = c * c * c * c;
+        let d2 = self.distance * self.distance;
+        Spectrum::fill(d2 / (a * c4))
     }
 
     fn positional_pdf(&self, _: Point) -> Option<f64> {
