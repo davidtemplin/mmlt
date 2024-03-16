@@ -28,18 +28,30 @@ pub struct Vertex {
 
 impl Vertex {
     fn camera_path_weight(&self) -> Option<f64> {
-        if self.forward_pdf? != 0.0 {
-            Some(self.reverse_pdf? / self.forward_pdf?)
-        } else {
+        if self.forward_pdf.is_none() && self.reverse_pdf.is_none() {
             None
+        } else {
+            let fwd = self.forward_pdf.unwrap_or(1.0);
+            let rev = self.reverse_pdf.unwrap_or(1.0);
+            if fwd != 0.0 {
+                Some(rev / fwd)
+            } else {
+                Some(rev)
+            }
         }
     }
 
     fn light_path_weight(&self) -> Option<f64> {
-        if self.reverse_pdf? != 0.0 {
-            Some(self.forward_pdf? / self.reverse_pdf?)
-        } else {
+        if self.forward_pdf.is_none() && self.reverse_pdf.is_none() {
             None
+        } else {
+            let fwd = self.forward_pdf.unwrap_or(1.0);
+            let rev = self.reverse_pdf.unwrap_or(1.0);
+            if rev != 0.0 {
+                Some(fwd / rev)
+            } else {
+                Some(fwd)
+            }
         }
     }
 }
@@ -495,16 +507,23 @@ impl<'a> Path {
     pub fn weight(&self) -> f64 {
         let mut product = 1.0;
         let mut sum = 0.0;
-        for (index, vertex) in self.vertices.iter().enumerate() {
-            let path_type = self.technique.path_type(index);
-            let weight = match path_type {
-                PathType::Camera => vertex.camera_path_weight(),
-                PathType::Light => vertex.light_path_weight(),
-            };
-            if let Some(w) = weight {
+
+        for vertex in self.vertices[0..self.technique.camera].iter().rev() {
+            if let Some(w) = vertex.camera_path_weight() {
                 if w != 0.0 {
                     product = product * w;
                     sum = sum + product;
+                }
+            }
+        }
+
+        if self.technique.light >= 2 {
+            for vertex in self.vertices[self.technique.camera..].iter() {
+                if let Some(w) = vertex.light_path_weight() {
+                    if w != 0.0 {
+                        product = product * w;
+                        sum = sum + product;
+                    }
                 }
             }
         }
