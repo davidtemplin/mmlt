@@ -49,7 +49,7 @@ impl Light for DiffuseAreaLight {
     }
 
     fn directional_pdf(&self, normal: Vector, direction: Vector) -> Option<f64> {
-        Some(direction.norm().dot(normal) / PI)
+        Some(direction.norm().dot(normal).abs() / PI)
     }
 
     fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction {
