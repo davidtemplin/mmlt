@@ -4,7 +4,8 @@ image:
   height: 480
   filter:
     type: box
-  clamp: 0.5
+  sample_clamp: 0.5
+  clamp: 150.0
 
 camera:
   type: pinhole

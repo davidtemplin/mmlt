@@ -17,6 +17,7 @@ pub struct Image {
     width: usize,
     height: usize,
     filter: Box<dyn Filter>,
+    sample_clamp: Option<f64>,
     clamp: Option<f64>,
 }
 
@@ -26,16 +27,24 @@ impl Image {
             config.width,
             config.height,
             config.filter.configure(),
+            config.sample_clamp,
             config.clamp,
         )
     }
 
-    pub fn new(width: usize, height: usize, filter: Box<dyn Filter>, clamp: Option<f64>) -> Image {
+    pub fn new(
+        width: usize,
+        height: usize,
+        filter: Box<dyn Filter>,
+        sample_clamp: Option<f64>,
+        clamp: Option<f64>,
+    ) -> Image {
         Image {
             pixels: vec![Spectrum::black(); width * height],
             width,
             height,
             filter,
+            sample_clamp,
             clamp,
         }
     }
@@ -52,7 +61,9 @@ impl Image {
                     let i = y * self.width + x;
                     let p = Point2::new(x as f64, y as f64);
                     let weight = self.filter.evaluate(coordinates - p);
-                    self.pixels[i] = self.pixels[i] + weight * spectrum.try_clamp(self.clamp);
+                    self.pixels[i] =
+                        self.pixels[i] + weight * spectrum.try_clamp(self.sample_clamp);
+                    self.pixels[i] = self.pixels[i].try_clamp(self.clamp);
                 }
             }
         } else {
@@ -143,6 +154,7 @@ pub struct ImageConfig {
     pub width: usize,
     pub height: usize,
     pub filter: FilterConfig,
+    pub sample_clamp: Option<f64>,
     pub clamp: Option<f64>,
 }
 
