@@ -1,16 +1,23 @@
 use std::cell::OnceCell;
 
 use crate::{
-    bsdf::Bsdf, camera::Camera, geometry::Geometry, image::PixelCoordinates, light::Light,
-    object::Object, ray::Ray, sampler::Sampler, spectrum::Spectrum, types::PathType,
-    vector::Vector,
+    bsdf::Bsdf,
+    camera::Camera,
+    geometry::Geometry,
+    light::Light,
+    object::Object,
+    ray::Ray,
+    sampler::Sampler,
+    spectrum::Spectrum,
+    types::PathType,
+    vector::{Point2, Vector3},
 };
 
 #[derive(Debug)]
 pub struct CameraInteraction<'a> {
     pub camera: &'a (dyn Camera + 'a),
     pub geometry: Geometry,
-    pub pixel_coordinates: PixelCoordinates,
+    pub pixel_coordinates: Point2,
 }
 
 #[derive(Debug)]
@@ -51,11 +58,11 @@ impl<'a> ObjectInteraction<'a> {
         }
     }
 
-    pub fn pdf(&self, wo: Vector, wi: Vector, path_type: PathType) -> Option<f64> {
+    pub fn pdf(&self, wo: Vector3, wi: Vector3, path_type: PathType) -> Option<f64> {
         self.get_bsdf().pdf(wo, wi, path_type)
     }
 
-    pub fn reflectance(&self, wo: Vector, wi: Vector) -> Spectrum {
+    pub fn reflectance(&self, wo: Vector3, wi: Vector3) -> Spectrum {
         self.get_bsdf().evaluate(wo, wi)
     }
 }
@@ -130,7 +137,7 @@ impl<'a> Interaction<'a> {
         }
     }
 
-    pub fn set_direction(&mut self, direction: Vector) {
+    pub fn set_direction(&mut self, direction: Vector3) {
         self.geometry().set_direction(direction);
     }
 }

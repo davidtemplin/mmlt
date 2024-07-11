@@ -1,14 +1,14 @@
 use std::f64::consts::PI;
 
-use crate::{sampler::Sampler, vector::Vector};
+use crate::{sampler::Sampler, vector::Vector3};
 
-pub fn direction_to_area(direction: Vector, normal: Vector) -> f64 {
+pub fn direction_to_area(direction: Vector3, normal: Vector3) -> f64 {
     let d2 = direction.dot(direction);
     let x = normal.dot(direction) / (d2 * d2.sqrt());
     x.abs()
 }
 
-pub fn geometry_term(direction: Vector, normal1: Vector, normal2: Vector) -> f64 {
+pub fn geometry_term(direction: Vector3, normal1: Vector3, normal2: Vector3) -> f64 {
     let d2 = direction.dot(direction);
     let x = (normal1.dot(direction) * normal2.dot(direction)) / (d2 * d2);
     x.abs()
@@ -71,7 +71,7 @@ pub fn concentric_sample_disk(sampler: &mut dyn Sampler) -> (f64, f64) {
     (r * theta.cos(), r * theta.sin())
 }
 
-pub fn cosine_sample_hemisphere(n: Vector, sampler: &mut dyn Sampler) -> Vector {
+pub fn cosine_sample_hemisphere(n: Vector3, sampler: &mut dyn Sampler) -> Vector3 {
     // Sample a unit disk in R^2
     let (x, y) = concentric_sample_disk(sampler);
 
@@ -84,12 +84,12 @@ pub fn cosine_sample_hemisphere(n: Vector, sampler: &mut dyn Sampler) -> Vector 
     nx * x + ny * y + nz * z
 }
 
-pub fn orthonormal_basis(n: Vector) -> (Vector, Vector, Vector) {
+pub fn orthonormal_basis(n: Vector3) -> (Vector3, Vector3, Vector3) {
     let nz = n.norm();
-    let ey = Vector::new(0.0, 1.0, 0.0);
+    let ey = Vector3::new(0.0, 1.0, 0.0);
     let mut nx = ey.cross(nz).norm();
     let ny = if nx.is_zero() {
-        let ex = Vector::new(1.0, 0.0, 0.0);
+        let ex = Vector3::new(1.0, 0.0, 0.0);
         let ny = nz.cross(ex).norm();
         nx = ny.cross(nz).norm();
         ny
@@ -99,29 +99,33 @@ pub fn orthonormal_basis(n: Vector) -> (Vector, Vector, Vector) {
     (nx, ny, nz)
 }
 
-pub fn same_hemisphere(n: Vector, v1: Vector, v2: Vector) -> bool {
+pub fn same_hemisphere(n: Vector3, v1: Vector3, v2: Vector3) -> bool {
     v1.dot(n).is_sign_positive() == v2.dot(n).is_sign_positive()
 }
 
-pub fn abs_cos_theta(n: Vector, v: Vector) -> f64 {
+pub fn abs_cos_theta(n: Vector3, v: Vector3) -> f64 {
     n.norm().dot(v.norm()).abs()
 }
 
-pub fn uniform_sample_sphere(sampler: &mut dyn Sampler) -> Vector {
+pub fn uniform_sample_sphere(sampler: &mut dyn Sampler) -> Vector3 {
     let u1 = sampler.sample(0.0..1.0);
     let u2 = sampler.sample(0.0..1.0);
     let z = 1.0 - 2.0 * u1;
     let r = f64::max(0.0, 1.0 - z * z).sqrt();
     let phi = 2.0 * PI * u2;
-    Vector::new(r * phi.cos(), r * phi.sin(), z)
+    Vector3::new(r * phi.cos(), r * phi.sin(), z)
 }
 
 pub fn equals(a: f64, b: f64, tolerance: f64) -> bool {
     (a - b).abs() < tolerance
 }
 
-pub fn reflect(d: Vector, n: Vector) -> Vector {
+pub fn reflect(d: Vector3, n: Vector3) -> Vector3 {
     d - (2.0 * d.dot(n) * n)
+}
+
+pub fn gaussian(x: f64, sigma: f64) -> f64 {
+    f64::exp(-(x * x) / (2.0 * sigma * sigma))
 }
 
 #[cfg(test)]
@@ -130,40 +134,40 @@ mod tests {
         concentric_sample_disk, cosine_sample_hemisphere, direction_to_area, erf_inv,
         geometry_term, orthonormal_basis,
     };
-    use crate::{sampler::test::MockSampler, vector::Vector};
+    use crate::{sampler::test::MockSampler, vector::Vector3};
     use std::f64::consts::PI;
 
     #[test]
     fn test_orthonormal_basis() {
-        let d1 = Vector::new(0.0, 0.0, 2.0);
+        let d1 = Vector3::new(0.0, 0.0, 2.0);
         let (u1, v1, w1) = orthonormal_basis(d1);
-        assert_eq!(u1, Vector::new(1.0, 0.0, 0.0));
-        assert_eq!(v1, Vector::new(0.0, 1.0, 0.0));
-        assert_eq!(w1, Vector::new(0.0, 0.0, 1.0));
+        assert_eq!(u1, Vector3::new(1.0, 0.0, 0.0));
+        assert_eq!(v1, Vector3::new(0.0, 1.0, 0.0));
+        assert_eq!(w1, Vector3::new(0.0, 0.0, 1.0));
 
-        let d2 = Vector::new(2.0, 0.0, 0.0);
+        let d2 = Vector3::new(2.0, 0.0, 0.0);
         let (u2, v2, w2) = orthonormal_basis(d2);
-        assert_eq!(u2, Vector::new(0.0, 0.0, -1.0));
-        assert_eq!(v2, Vector::new(0.0, 1.0, 0.0));
-        assert_eq!(w2, Vector::new(1.0, 0.0, 0.0));
+        assert_eq!(u2, Vector3::new(0.0, 0.0, -1.0));
+        assert_eq!(v2, Vector3::new(0.0, 1.0, 0.0));
+        assert_eq!(w2, Vector3::new(1.0, 0.0, 0.0));
 
-        let d3 = Vector::new(0.0, 2.0, 0.0);
+        let d3 = Vector3::new(0.0, 2.0, 0.0);
         let (u3, v3, w3) = orthonormal_basis(d3);
-        assert_eq!(u3, Vector::new(1.0, 0.0, 0.0));
-        assert_eq!(v3, Vector::new(0.0, 0.0, -1.0));
-        assert_eq!(w3, Vector::new(0.0, 1.0, 0.0));
+        assert_eq!(u3, Vector3::new(1.0, 0.0, 0.0));
+        assert_eq!(v3, Vector3::new(0.0, 0.0, -1.0));
+        assert_eq!(w3, Vector3::new(0.0, 1.0, 0.0));
 
-        let d4 = Vector::new(1.0, 1.0, 1.0);
+        let d4 = Vector3::new(1.0, 1.0, 1.0);
         let (u4, v4, w4) = orthonormal_basis(d4);
-        assert!((u4 - Vector::new(1.0, 0.0, -1.0).norm()).len() < 1e-5);
-        assert!((v4 - Vector::new(-1.0, 2.0, -1.0).norm()).len() < 1e-5);
+        assert!((u4 - Vector3::new(1.0, 0.0, -1.0).norm()).len() < 1e-5);
+        assert!((v4 - Vector3::new(-1.0, 2.0, -1.0).norm()).len() < 1e-5);
         assert!((w4 - d4.norm()).len() < 1e-5);
 
-        let d5 = Vector::new(0.0, -2.0, 0.0);
+        let d5 = Vector3::new(0.0, -2.0, 0.0);
         let (u5, v5, w5) = orthonormal_basis(d5);
-        assert_eq!(u5, Vector::new(1.0, 0.0, 0.0));
-        assert_eq!(v5, Vector::new(0.0, 0.0, 1.0));
-        assert_eq!(w5, Vector::new(0.0, -1.0, 0.0));
+        assert_eq!(u5, Vector3::new(1.0, 0.0, 0.0));
+        assert_eq!(v5, Vector3::new(0.0, 0.0, 1.0));
+        assert_eq!(w5, Vector3::new(0.0, -1.0, 0.0));
     }
 
     #[test]
@@ -173,9 +177,9 @@ mod tests {
 
     #[test]
     fn test_direction_to_area() {
-        let d = Vector::new(10.0, 0.0, 0.0);
+        let d = Vector3::new(10.0, 0.0, 0.0);
         let angle = PI / 4.0;
-        let n = Vector::new(-f64::cos(angle), f64::sin(angle), 0.0).norm();
+        let n = Vector3::new(-f64::cos(angle), f64::sin(angle), 0.0).norm();
         let a = direction_to_area(d, n);
         let e = (f64::cos(angle) / (d.len() * d.len())).abs();
         assert!(a - e < 1e-8);
@@ -183,11 +187,11 @@ mod tests {
 
     #[test]
     fn test_geometry_term() {
-        let d = Vector::new(10.0, 0.0, 0.0);
+        let d = Vector3::new(10.0, 0.0, 0.0);
         let angle1 = PI / 4.0;
         let angle2 = PI / 3.0;
-        let n1 = Vector::new(f64::cos(angle1), -f64::sin(angle1), 0.0).norm();
-        let n2 = Vector::new(-f64::cos(angle2), f64::sin(angle2), 0.0).norm();
+        let n1 = Vector3::new(f64::cos(angle1), -f64::sin(angle1), 0.0).norm();
+        let n2 = Vector3::new(-f64::cos(angle2), f64::sin(angle2), 0.0).norm();
         let g = geometry_term(d, n1, n2);
         let e = ((f64::cos(angle1) * f64::cos(angle2)) / (d.len() * d.len())).abs();
         assert!(g - e < 1e-8);
@@ -207,7 +211,7 @@ mod tests {
         let mut sampler = MockSampler::new();
         sampler.add(0.7);
         sampler.add(0.5);
-        let n = Vector::new(0.0, -1.0, 0.0);
+        let n = Vector3::new(0.0, -1.0, 0.0);
         let v = cosine_sample_hemisphere(n, &mut sampler);
         let tolerance = 1.0e-5;
         assert!(1.0 - v.len() < tolerance);

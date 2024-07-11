@@ -58,7 +58,7 @@ mod tests {
         geometry::Geometry,
         spectrum::{Spectrum, SpectrumConfig},
         texture::Texture,
-        vector::{Point, Vector},
+        vector::{Point3, Vector3},
     };
 
     use super::{ConstantTexture, ConstantTextureConfig};
@@ -88,9 +88,9 @@ mod tests {
         let spectrum = Spectrum::fill(1.0);
         let texture = ConstantTexture::new(spectrum);
         let geometry = Geometry {
-            point: Point::new(0.0, 0.0, 0.0),
-            normal: Vector::new(0.0, 0.0, 0.0),
-            direction: Vector::new(0.0, 0.0, 0.0),
+            point: Point3::new(0.0, 0.0, 0.0),
+            normal: Vector3::new(0.0, 0.0, 0.0),
+            direction: Vector3::new(0.0, 0.0, 0.0),
         };
         assert_eq!(texture.evaluate(geometry), spectrum);
     }

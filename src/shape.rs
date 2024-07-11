@@ -7,7 +7,7 @@ use crate::{
     ray::Ray,
     sampler::Sampler,
     util,
-    vector::{Point, PointConfig, Vector},
+    vector::{Point3, Point3Config, Vector3},
 };
 
 pub trait Shape: fmt::Debug {
@@ -18,16 +18,16 @@ pub trait Shape: fmt::Debug {
 
 #[derive(Debug)]
 pub struct Sphere {
-    center: Point,
+    center: Point3,
     radius: f64,
 }
 
 impl Sphere {
     pub fn configure(config: &SphereConfig) -> Sphere {
-        Sphere::new(Point::configure(&config.center), config.radius)
+        Sphere::new(Point3::configure(&config.center), config.radius)
     }
 
-    pub fn new(center: Point, radius: f64) -> Sphere {
+    pub fn new(center: Point3, radius: f64) -> Sphere {
         Sphere { center, radius }
     }
 }
@@ -80,21 +80,21 @@ impl Shape for Sphere {
 
 #[derive(Debug)]
 pub struct Parallelogram {
-    origin: Point,
-    a: Vector,
-    b: Vector,
+    origin: Point3,
+    a: Vector3,
+    b: Vector3,
 }
 
 impl Parallelogram {
     pub fn configure(config: &ParallelogramConfig) -> Parallelogram {
         Parallelogram::new(
-            Point::configure(&config.origin),
-            Vector::configure(&config.a),
-            Vector::configure(&config.b),
+            Point3::configure(&config.origin),
+            Vector3::configure(&config.a),
+            Vector3::configure(&config.b),
         )
     }
 
-    pub fn new(origin: Point, a: Vector, b: Vector) -> Parallelogram {
+    pub fn new(origin: Point3, a: Vector3, b: Vector3) -> Parallelogram {
         Parallelogram { origin, a, b }
     }
 }
@@ -181,15 +181,15 @@ pub enum ShapeConfig {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SphereConfig {
-    center: PointConfig,
+    center: Point3Config,
     radius: f64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ParallelogramConfig {
-    origin: PointConfig,
-    a: PointConfig,
-    b: PointConfig,
+    origin: Point3Config,
+    a: Point3Config,
+    b: Point3Config,
 }
 
 impl ShapeConfig {
@@ -211,12 +211,12 @@ mod tests {
         geometry::Geometry,
         ray::Ray,
         sampler::test::MockSampler,
-        vector::{Point, Vector},
+        vector::{Point3, Vector3},
     };
 
     #[test]
     fn test_sphere_area() {
-        let center = Point::new(10.0, 10.0, 10.0);
+        let center = Point3::new(10.0, 10.0, 10.0);
         let radius = 2.0;
         let sphere = Sphere::new(center, radius);
         let area = sphere.area();
@@ -227,26 +227,26 @@ mod tests {
     fn test_sphere_insersect() {
         let tolerance = 1e-8;
 
-        let center = Point::new(10.0, 0.0, 0.0);
+        let center = Point3::new(10.0, 0.0, 0.0);
         let radius = 1.0;
         let sphere = Sphere::new(center, radius);
-        let origin = Point::new(0.0, 0.0, 0.0);
-        let direction = Vector::new(1.0, 0.0, 0.0);
+        let origin = Point3::new(0.0, 0.0, 0.0);
+        let direction = Vector3::new(1.0, 0.0, 0.0);
         let ray = Ray::new(origin, direction);
         let actual = sphere.intersect(ray).unwrap();
         let expected = Geometry {
-            point: Point::new(9.0, 0.0, 0.0),
-            normal: Vector::new(-1.0, 0.0, 0.0),
-            direction: Vector::new(9.0, 0.0, 0.0),
+            point: Point3::new(9.0, 0.0, 0.0),
+            normal: Vector3::new(-1.0, 0.0, 0.0),
+            direction: Vector3::new(9.0, 0.0, 0.0),
         };
         assert!(actual.approx_eq(expected, tolerance));
 
-        let center = Point::new(10.0, 10.0, 10.0);
+        let center = Point3::new(10.0, 10.0, 10.0);
         let sphere = Sphere::new(center, radius);
-        let direction = Vector::new(1.0, 1.0, 1.0).norm();
+        let direction = Vector3::new(1.0, 1.0, 1.0).norm();
         let ray = Ray::new(origin, direction);
         let actual = sphere.intersect(ray).unwrap();
-        let offset = Vector::new(-1.0, -1.0, -1.0).norm();
+        let offset = Vector3::new(-1.0, -1.0, -1.0).norm();
         let expected = Geometry {
             point: center + offset,
             normal: offset,
@@ -254,11 +254,11 @@ mod tests {
         };
         assert!(actual.approx_eq(expected, tolerance));
 
-        let center = Point::new(10.0, 10.0, 10.0);
+        let center = Point3::new(10.0, 10.0, 10.0);
         let radius = 2.0;
         let sphere = Sphere::new(center, radius);
-        let origin = Point::new(1.0, 2.0, -3.0);
-        let offset = Vector::new(-1.0, -1.0, 1.0).norm() * radius;
+        let origin = Point3::new(1.0, 2.0, -3.0);
+        let offset = Vector3::new(-1.0, -1.0, 1.0).norm() * radius;
         let direction = (center + offset - origin).norm();
         let ray = Ray::new(origin, direction);
         let actual = sphere.intersect(ray).unwrap();
@@ -272,9 +272,9 @@ mod tests {
 
     #[test]
     fn test_parallelogram_area() {
-        let origin = Point::new(10.0, -1.0, 0.0);
-        let a = Vector::new(0.0, 0.0, 2.0);
-        let b = Vector::new(0.0, 2.0, 0.0);
+        let origin = Point3::new(10.0, -1.0, 0.0);
+        let a = Vector3::new(0.0, 0.0, 2.0);
+        let b = Vector3::new(0.0, 2.0, 0.0);
         let parallelogram = Parallelogram::new(origin, a, b);
         assert_eq!(parallelogram.area(), a.len() * b.len());
     }
@@ -282,26 +282,26 @@ mod tests {
     #[test]
     fn test_parallelogram_intersect() {
         let tolerance = 1e-8;
-        let origin = Point::new(10.0, -1.0, 0.0);
-        let a = Vector::new(0.0, 0.0, 2.0);
-        let b = Vector::new(0.0, 2.0, 0.0);
+        let origin = Point3::new(10.0, -1.0, 0.0);
+        let a = Vector3::new(0.0, 0.0, 2.0);
+        let b = Vector3::new(0.0, 2.0, 0.0);
         let parallelogram = Parallelogram::new(origin, a, b);
-        let ray_origin = Point::new(0.0, 0.0, 0.0);
-        let direction = Vector::new(1.0, 0.0, 0.0);
+        let ray_origin = Point3::new(0.0, 0.0, 0.0);
+        let direction = Vector3::new(1.0, 0.0, 0.0);
         let ray = Ray::new(ray_origin, direction);
         let actual = parallelogram.intersect(ray).unwrap();
         let expected = Geometry {
-            point: Point::new(10.0, 0.0, 0.0),
-            normal: Vector::new(-1.0, 0.0, 0.0),
-            direction: Vector::new(10.0, 0.0, 0.0),
+            point: Point3::new(10.0, 0.0, 0.0),
+            normal: Vector3::new(-1.0, 0.0, 0.0),
+            direction: Vector3::new(10.0, 0.0, 0.0),
         };
         assert!(actual.approx_eq(expected, tolerance));
 
-        let origin = Point::new(10.0, 10.0, 10.0);
-        let a = Vector::new(0.0, 0.0, 2.0);
-        let b = Vector::new(0.0, 2.0, 0.0);
+        let origin = Point3::new(10.0, 10.0, 10.0);
+        let a = Vector3::new(0.0, 0.0, 2.0);
+        let b = Vector3::new(0.0, 2.0, 0.0);
         let parallelogram = Parallelogram::new(origin, a, b);
-        let ray_origin = Point::new(1.0, 2.0, 3.0);
+        let ray_origin = Point3::new(1.0, 2.0, 3.0);
         let target = origin + 0.5 * a + 0.5 * b;
         let direction = (target - ray_origin).norm();
         let ray = Ray::new(ray_origin, direction);
@@ -316,16 +316,16 @@ mod tests {
 
     #[test]
     fn test_parallelogram_sample_geometry() {
-        let origin = Point::new(0.3, 1.0, 0.3);
-        let a = Vector::new(0.4, 0.0, 0.0);
-        let b = Vector::new(0.0, 0.0, 0.4);
+        let origin = Point3::new(0.3, 1.0, 0.3);
+        let a = Vector3::new(0.4, 0.0, 0.0);
+        let b = Vector3::new(0.0, 0.0, 0.4);
         let parallelogram = Parallelogram::new(origin, a, b);
         let mut sampler = MockSampler::new();
         sampler.add(0.6);
         sampler.add(0.25);
         let geometry = parallelogram.sample_geometry(&mut sampler);
-        assert_eq!(geometry.normal, Vector::new(0.0, -1.0, 0.0));
-        assert_eq!(geometry.direction, Vector::new(0.0, -1.0, 0.0));
+        assert_eq!(geometry.normal, Vector3::new(0.0, -1.0, 0.0));
+        assert_eq!(geometry.direction, Vector3::new(0.0, -1.0, 0.0));
         assert!(a.norm().dot(geometry.point - origin) < 1.0);
         assert!(b.norm().dot(geometry.point - origin) < 1.0);
     }

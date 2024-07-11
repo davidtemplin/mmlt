@@ -1,6 +1,6 @@
 use std::{f64::consts::PI, fmt};
 
-use crate::{sampler::Sampler, spectrum::Spectrum, types::PathType, util, vector::Vector};
+use crate::{sampler::Sampler, spectrum::Spectrum, types::PathType, util, vector::Vector3};
 
 #[derive(Debug)]
 pub struct Bsdf {
@@ -8,18 +8,18 @@ pub struct Bsdf {
 }
 
 pub trait Bxdf: fmt::Debug {
-    fn evaluate(&self, wo: Vector, wi: Vector) -> Spectrum;
-    fn pdf(&self, wo: Vector, wi: Vector, path_type: PathType) -> Option<f64>;
+    fn evaluate(&self, wo: Vector3, wi: Vector3) -> Spectrum;
+    fn pdf(&self, wo: Vector3, wi: Vector3, path_type: PathType) -> Option<f64>;
     fn sample_direction(
         &self,
-        wx: Vector,
+        wx: Vector3,
         path_type: PathType,
         sampler: &mut dyn Sampler,
-    ) -> Vector;
+    ) -> Vector3;
 }
 
 impl Bsdf {
-    pub fn evaluate(&self, wo: Vector, wi: Vector) -> Spectrum {
+    pub fn evaluate(&self, wo: Vector3, wi: Vector3) -> Spectrum {
         self.bxdfs
             .iter()
             .map(|bxdf| bxdf.evaluate(wo, wi))
@@ -28,17 +28,17 @@ impl Bsdf {
 
     pub fn sample_direction(
         &self,
-        wx: Vector,
+        wx: Vector3,
         path_type: PathType,
         sampler: &mut dyn Sampler,
-    ) -> Vector {
+    ) -> Vector3 {
         let length = self.bxdfs.len() as f64;
         let r = sampler.sample(0.0..length).floor();
         let i = r as usize;
         self.bxdfs[i].sample_direction(wx, path_type, sampler)
     }
 
-    pub fn pdf(&self, wo: Vector, wi: Vector, path_type: PathType) -> Option<f64> {
+    pub fn pdf(&self, wo: Vector3, wi: Vector3, path_type: PathType) -> Option<f64> {
         let mut count = 0;
         let mut sum = 0.0;
         for bxdf in &self.bxdfs {
@@ -61,17 +61,17 @@ impl Bsdf {
 #[derive(Debug)]
 pub struct DiffuseBrdf {
     scale: Spectrum,
-    normal: Vector,
+    normal: Vector3,
 }
 
 impl DiffuseBrdf {
-    pub fn new(normal: Vector, scale: Spectrum) -> DiffuseBrdf {
+    pub fn new(normal: Vector3, scale: Spectrum) -> DiffuseBrdf {
         DiffuseBrdf { normal, scale }
     }
 }
 
 impl Bxdf for DiffuseBrdf {
-    fn evaluate(&self, wo: Vector, wi: Vector) -> Spectrum {
+    fn evaluate(&self, wo: Vector3, wi: Vector3) -> Spectrum {
         if util::same_hemisphere(self.normal, wo, wi) {
             self.scale / PI
         } else {
@@ -79,7 +79,7 @@ impl Bxdf for DiffuseBrdf {
         }
     }
 
-    fn pdf(&self, wo: Vector, wi: Vector, _: PathType) -> Option<f64> {
+    fn pdf(&self, wo: Vector3, wi: Vector3, _: PathType) -> Option<f64> {
         let p = if util::same_hemisphere(self.normal, wo, wi) {
             util::abs_cos_theta(self.normal, wi) / PI
         } else {
@@ -88,7 +88,7 @@ impl Bxdf for DiffuseBrdf {
         Some(p)
     }
 
-    fn sample_direction(&self, wo: Vector, _: PathType, sampler: &mut dyn Sampler) -> Vector {
+    fn sample_direction(&self, wo: Vector3, _: PathType, sampler: &mut dyn Sampler) -> Vector3 {
         let wi = util::cosine_sample_hemisphere(self.normal, sampler);
         if util::same_hemisphere(self.normal, wi, wo) {
             wi
@@ -101,17 +101,17 @@ impl Bxdf for DiffuseBrdf {
 #[derive(Debug)]
 pub struct SpecularBrdf {
     scale: Spectrum,
-    normal: Vector,
+    normal: Vector3,
 }
 
 impl SpecularBrdf {
-    pub fn new(normal: Vector, scale: Spectrum) -> SpecularBrdf {
+    pub fn new(normal: Vector3, scale: Spectrum) -> SpecularBrdf {
         SpecularBrdf { scale, normal }
     }
 }
 
 impl Bxdf for SpecularBrdf {
-    fn evaluate(&self, wo: Vector, wi: Vector) -> Spectrum {
+    fn evaluate(&self, wo: Vector3, wi: Vector3) -> Spectrum {
         let d1 = wo.norm().dot(self.normal);
         let d2 = wi.norm().dot(self.normal);
         if util::equals(d1, d2, 0.0001) {
@@ -121,11 +121,11 @@ impl Bxdf for SpecularBrdf {
         }
     }
 
-    fn pdf(&self, _: Vector, _: Vector, _: PathType) -> Option<f64> {
+    fn pdf(&self, _: Vector3, _: Vector3, _: PathType) -> Option<f64> {
         None
     }
 
-    fn sample_direction(&self, wx: Vector, _: PathType, _: &mut dyn Sampler) -> Vector {
+    fn sample_direction(&self, wx: Vector3, _: PathType, _: &mut dyn Sampler) -> Vector3 {
         util::reflect(wx, self.normal)
     }
 }
@@ -135,17 +135,17 @@ mod tests {
     use super::{Bxdf, DiffuseBrdf, SpecularBrdf};
     use crate::{
         bsdf::Bsdf, sampler::test::MockSampler, spectrum::Spectrum, types::PathType, util,
-        vector::Vector,
+        vector::Vector3,
     };
     use std::f64::consts::PI;
 
     #[test]
     fn test_diffuse_brdf_evaluate_same_hemisphere() {
         let scale = Spectrum::fill(0.8);
-        let normal = Vector::new(0.0, 1.0, 0.0);
+        let normal = Vector3::new(0.0, 1.0, 0.0);
         let brdf = DiffuseBrdf::new(normal, scale);
-        let wo = Vector::new(1.0, 1.0, 0.0);
-        let wi = Vector::new(-1.0, 1.0, 0.0);
+        let wo = Vector3::new(1.0, 1.0, 0.0);
+        let wi = Vector3::new(-1.0, 1.0, 0.0);
         let actual = brdf.evaluate(wo, wi);
         let expected = scale / PI;
         assert_eq!(actual, expected);
@@ -154,10 +154,10 @@ mod tests {
     #[test]
     fn test_diffuse_brdf_evaluate_different_hemisphere() {
         let scale = Spectrum::fill(0.8);
-        let normal = Vector::new(0.0, 1.0, 0.0);
+        let normal = Vector3::new(0.0, 1.0, 0.0);
         let brdf = DiffuseBrdf::new(normal, scale);
-        let wo = Vector::new(1.0, 1.0, 0.0);
-        let wi = Vector::new(-1.0, -1.0, 0.0);
+        let wo = Vector3::new(1.0, 1.0, 0.0);
+        let wi = Vector3::new(-1.0, -1.0, 0.0);
         let actual = brdf.evaluate(wo, wi);
         let expected = Spectrum::fill(0.0);
         assert_eq!(actual, expected);
@@ -166,10 +166,10 @@ mod tests {
     #[test]
     fn test_diffuse_brdf_pdf_same_hemisphere() {
         let scale = Spectrum::fill(0.8);
-        let normal = Vector::new(0.0, 1.0, 0.0);
+        let normal = Vector3::new(0.0, 1.0, 0.0);
         let brdf = DiffuseBrdf::new(normal, scale);
-        let wo = Vector::new(1.0, 1.0, 0.0);
-        let wi = Vector::new(-1.0, 1.0, 0.0);
+        let wo = Vector3::new(1.0, 1.0, 0.0);
+        let wi = Vector3::new(-1.0, 1.0, 0.0);
         let actual = brdf.pdf(wo, wi, PathType::Camera);
         let expected = Some(util::abs_cos_theta(normal, wi) / PI);
         assert_eq!(actual, expected);
@@ -178,10 +178,10 @@ mod tests {
     #[test]
     fn test_diffuse_brdf_pdf_different_hemisphere() {
         let scale = Spectrum::fill(0.8);
-        let normal = Vector::new(0.0, 1.0, 0.0);
+        let normal = Vector3::new(0.0, 1.0, 0.0);
         let brdf = DiffuseBrdf::new(normal, scale);
-        let wo = Vector::new(1.0, 1.0, 0.0);
-        let wi = Vector::new(-1.0, -1.0, 0.0);
+        let wo = Vector3::new(1.0, 1.0, 0.0);
+        let wi = Vector3::new(-1.0, -1.0, 0.0);
         let actual = brdf.pdf(wo, wi, PathType::Camera);
         let expected = Some(0.0);
         assert_eq!(actual, expected);
@@ -190,8 +190,8 @@ mod tests {
     #[test]
     fn test_diffuse_brdf_sample_direction_parallel() {
         let scale = Spectrum::fill(0.8);
-        let normal = Vector::new(0.0, 1.0, 0.0);
-        let wo = Vector::new(1.0, 1.0, 1.0);
+        let normal = Vector3::new(0.0, 1.0, 0.0);
+        let wo = Vector3::new(1.0, 1.0, 1.0);
         let brdf = DiffuseBrdf::new(normal, scale);
         let mut sampler = MockSampler::new();
         sampler.add(0.25);
@@ -203,8 +203,8 @@ mod tests {
     #[test]
     fn test_diffuse_brdf_sample_direction_non_parallel() {
         let scale = Spectrum::fill(0.8);
-        let normal = Vector::new(1.0, 1.0, 1.0);
-        let wo = Vector::new(2.0, 1.0, 1.0);
+        let normal = Vector3::new(1.0, 1.0, 1.0);
+        let wo = Vector3::new(2.0, 1.0, 1.0);
         let brdf = DiffuseBrdf::new(normal, scale);
         let mut sampler = MockSampler::new();
         sampler.add(0.25);
@@ -216,10 +216,10 @@ mod tests {
     #[test]
     fn test_specular_brdf_evaluate_exact() {
         let scale = Spectrum::fill(0.8);
-        let normal = Vector::new(0.0, 1.0, 0.0);
+        let normal = Vector3::new(0.0, 1.0, 0.0);
         let brdf = SpecularBrdf::new(normal, scale);
-        let wo = Vector::new(1.0, 1.0, 0.0);
-        let wi = Vector::new(-1.0, 1.0, 0.0);
+        let wo = Vector3::new(1.0, 1.0, 0.0);
+        let wi = Vector3::new(-1.0, 1.0, 0.0);
         let actual = brdf.evaluate(wo, wi);
         assert_eq!(actual, scale);
     }
@@ -227,10 +227,10 @@ mod tests {
     #[test]
     fn test_specular_brdf_evaluate_inexact() {
         let scale = Spectrum::fill(0.8);
-        let normal = Vector::new(0.0, 1.0, 0.0);
+        let normal = Vector3::new(0.0, 1.0, 0.0);
         let brdf = SpecularBrdf::new(normal, scale);
-        let wo = Vector::new(1.0, 1.0, 0.0);
-        let wi = Vector::new(-1.0, 1.1, 0.0);
+        let wo = Vector3::new(1.0, 1.0, 0.0);
+        let wi = Vector3::new(-1.0, 1.1, 0.0);
         let actual = brdf.evaluate(wo, wi);
         assert_eq!(actual, Spectrum::black());
     }
@@ -238,10 +238,10 @@ mod tests {
     #[test]
     fn test_specular_brdf_pdf() {
         let scale = Spectrum::fill(0.8);
-        let normal = Vector::new(0.0, 1.0, 0.0);
+        let normal = Vector3::new(0.0, 1.0, 0.0);
         let brdf = SpecularBrdf::new(normal, scale);
-        let wo = Vector::new(1.0, 1.0, 0.0);
-        let wi = Vector::new(-1.0, 1.0, 0.0);
+        let wo = Vector3::new(1.0, 1.0, 0.0);
+        let wi = Vector3::new(-1.0, 1.0, 0.0);
         let actual = brdf.pdf(wo, wi, PathType::Camera);
         assert_eq!(actual, None);
     }
@@ -249,8 +249,8 @@ mod tests {
     #[test]
     fn test_specular_brdf_sample_direction() {
         let scale = Spectrum::fill(0.8);
-        let normal = Vector::new(0.0, 1.0, 0.0);
-        let wo = Vector::new(1.0, 1.0, 0.0);
+        let normal = Vector3::new(0.0, 1.0, 0.0);
+        let wo = Vector3::new(1.0, 1.0, 0.0);
         let brdf = SpecularBrdf::new(normal, scale);
         let mut sampler = MockSampler::new();
         let direction = brdf.sample_direction(wo, PathType::Camera, &mut sampler);
@@ -261,11 +261,11 @@ mod tests {
     #[test]
     fn test_bsdf_evaluate() {
         let scale = Spectrum::fill(0.8);
-        let normal = Vector::new(0.0, 1.0, 0.0);
+        let normal = Vector3::new(0.0, 1.0, 0.0);
         let brdf1 = DiffuseBrdf::new(normal, scale);
         let brdf2 = SpecularBrdf::new(normal, scale);
-        let wo = Vector::new(1.0, 1.0, 0.0);
-        let wi = Vector::new(-1.0, 1.0, 0.0);
+        let wo = Vector3::new(1.0, 1.0, 0.0);
+        let wi = Vector3::new(-1.0, 1.0, 0.0);
         let bsdf = Bsdf {
             bxdfs: vec![Box::new(brdf1), Box::new(brdf2)],
         };
@@ -277,11 +277,11 @@ mod tests {
     #[test]
     fn test_bsdf_pdf() {
         let scale = Spectrum::fill(0.8);
-        let normal = Vector::new(0.0, 1.0, 0.0);
+        let normal = Vector3::new(0.0, 1.0, 0.0);
         let brdf1 = DiffuseBrdf::new(normal, scale);
         let brdf2 = SpecularBrdf::new(normal, scale);
-        let wo = Vector::new(1.0, 1.0, 0.0);
-        let wi = Vector::new(-1.0, 1.0, 0.0);
+        let wo = Vector3::new(1.0, 1.0, 0.0);
+        let wi = Vector3::new(-1.0, 1.0, 0.0);
         let bsdf = Bsdf {
             bxdfs: vec![Box::new(brdf1), Box::new(brdf2)],
         };
@@ -293,10 +293,10 @@ mod tests {
     #[test]
     fn test_bsdf_sample_direction() {
         let scale = Spectrum::fill(0.8);
-        let normal = Vector::new(0.0, 1.0, 0.0);
+        let normal = Vector3::new(0.0, 1.0, 0.0);
         let brdf1 = DiffuseBrdf::new(normal, scale);
         let brdf2 = SpecularBrdf::new(normal, scale);
-        let wo = Vector::new(1.0, 1.0, 0.0);
+        let wo = Vector3::new(1.0, 1.0, 0.0);
         let bsdf = Bsdf {
             bxdfs: vec![Box::new(brdf1), Box::new(brdf2)],
         };

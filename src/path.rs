@@ -2,7 +2,6 @@ use std::collections::VecDeque;
 
 use crate::{
     geometry::Geometry,
-    image::PixelCoordinates,
     interaction::Interaction,
     ray::Ray,
     sampler::{MmltSampler, Sampler},
@@ -10,13 +9,14 @@ use crate::{
     spectrum::Spectrum,
     types::PathType,
     util,
+    vector::Point2,
 };
 
 #[derive(Debug)]
 pub struct Path {
     vertices: Vec<Vertex>,
     technique: Technique,
-    pixel_coordinates: PixelCoordinates,
+    pixel_coordinates: Point2,
 }
 
 #[derive(Debug)]
@@ -74,7 +74,7 @@ impl Technique {
 pub struct Contribution {
     pub scalar: f64,
     pub spectrum: Spectrum,
-    pub pixel_coordinates: PixelCoordinates,
+    pub pixel_coordinates: Point2,
 }
 
 impl Contribution {
@@ -82,7 +82,7 @@ impl Contribution {
         Contribution {
             scalar: 0.0,
             spectrum: Spectrum::black(),
-            pixel_coordinates: PixelCoordinates { x: 0, y: 0 },
+            pixel_coordinates: Point2::new(0.0, 0.0),
         }
     }
 
@@ -326,7 +326,7 @@ impl<'a> Path {
 
     fn connect(interactions: &mut VecDeque<Interaction>, technique: Technique) -> Option<Path> {
         let mut vertices: Vec<Vertex> = Vec::new();
-        let mut pixel_coordinates: Option<PixelCoordinates> = None;
+        let mut pixel_coordinates: Option<Point2> = None;
         let mut area_pdf: Option<f64> = None;
         let mut previous_geometry: Option<Geometry> = None;
         for (index, interaction) in interactions.iter().enumerate() {
@@ -521,7 +521,7 @@ impl<'a> Path {
 #[cfg(test)]
 mod tests {
     use super::{Contribution, PathType, Technique};
-    use crate::{image::PixelCoordinates, sampler::test::MockSampler, spectrum::RgbSpectrum};
+    use crate::{sampler::test::MockSampler, spectrum::RgbSpectrum, vector::Point2};
 
     #[test]
     fn test_technique_sample() {
@@ -558,14 +558,14 @@ mod tests {
         let current = Contribution {
             scalar: spectrum1.luminance(),
             spectrum: spectrum1,
-            pixel_coordinates: PixelCoordinates { x: 100, y: 100 },
+            pixel_coordinates: Point2::new(100.0, 100.0),
         };
 
         let spectrum2 = RgbSpectrum::fill(0.05);
         let proposed = Contribution {
             scalar: spectrum2.luminance(),
             spectrum: spectrum2,
-            pixel_coordinates: PixelCoordinates { x: 100, y: 100 },
+            pixel_coordinates: Point2::new(100.0, 100.0),
         };
 
         let a = Contribution::acceptance(current, proposed);

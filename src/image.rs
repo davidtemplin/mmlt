@@ -6,43 +6,55 @@ use std::{
 use exr::image::write::write_rgb_file;
 use serde::{Deserialize, Serialize};
 
-use crate::spectrum::Spectrum;
-
-#[derive(Copy, Clone, Debug)]
-pub struct PixelCoordinates {
-    pub x: usize,
-    pub y: usize,
-}
-
-impl PixelCoordinates {
-    pub fn new(x: usize, y: usize) -> PixelCoordinates {
-        PixelCoordinates { x, y }
-    }
-}
+use crate::{
+    spectrum::Spectrum,
+    util,
+    vector::{Point2, Vector2, Vector2Config},
+};
 
 pub struct Image {
     pixels: Vec<Spectrum>,
     width: usize,
     height: usize,
+    filter: Box<dyn Filter>,
+    clamp: Option<f64>,
 }
 
 impl Image {
     pub fn configure(config: &ImageConfig) -> Image {
-        Image::new(config.width, config.height)
+        Image::new(
+            config.width,
+            config.height,
+            config.filter.configure(),
+            config.clamp,
+        )
     }
 
-    pub fn new(width: usize, height: usize) -> Image {
+    pub fn new(width: usize, height: usize, filter: Box<dyn Filter>, clamp: Option<f64>) -> Image {
         Image {
             pixels: vec![Spectrum::black(); width * height],
             width,
             height,
+            filter,
+            clamp,
         }
     }
 
-    pub fn contribute(&mut self, spectrum: Spectrum, coordinates: PixelCoordinates) {
-        let i = coordinates.y * self.width + coordinates.x;
+    pub fn contribute(&mut self, spectrum: Spectrum, coordinates: Point2) {
         if !spectrum.has_nans() {
-            self.pixels[i] = self.pixels[i] + spectrum;
+            let radius = self.filter.radius();
+            let min_x = usize::max(0, (coordinates.x - radius.x) as usize);
+            let max_x = usize::min(self.width - 1, (coordinates.x + radius.x) as usize);
+            let min_y = usize::max(0, (coordinates.y - radius.y) as usize);
+            let max_y = usize::min(self.height - 1, (coordinates.y + radius.y) as usize);
+            for y in min_y..=max_y {
+                for x in min_x..=max_x {
+                    let i = y * self.width + x;
+                    let p = Point2::new(x as f64, y as f64);
+                    let weight = self.filter.evaluate(coordinates - p);
+                    self.pixels[i] = self.pixels[i] + weight * spectrum.try_clamp(self.clamp);
+                }
+            }
         } else {
             eprintln!("warning: NaN detected");
         }
@@ -131,6 +143,7 @@ pub struct ImageConfig {
     pub width: usize,
     pub height: usize,
     pub filter: FilterConfig,
+    pub clamp: Option<f64>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -141,8 +154,71 @@ pub enum FilterConfig {
     Box,
 }
 
+impl FilterConfig {
+    pub fn configure(&self) -> Box<dyn Filter> {
+        match self {
+            FilterConfig::Gaussian(config) => Box::new(GaussianFilter::configure(config)),
+            FilterConfig::Box => Box::new(BoxFilter::new()),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GaussianFilterConfig {
-    radius: f64,
-    alpha: f64,
+    radius: Vector2Config,
+    sigma: f64,
+}
+
+pub trait Filter: Sync {
+    fn radius(&self) -> Vector2;
+    fn evaluate(&self, point: Point2) -> f64;
+}
+
+pub struct GaussianFilter {
+    sigma: f64,
+    radius: Vector2,
+    exp_x: f64,
+    exp_y: f64,
+}
+
+impl GaussianFilter {
+    pub fn configure(config: &GaussianFilterConfig) -> GaussianFilter {
+        let radius = Vector2::configure(&config.radius);
+        let sigma = config.sigma;
+        GaussianFilter {
+            sigma,
+            radius,
+            exp_x: util::gaussian(radius.x, sigma),
+            exp_y: util::gaussian(radius.y, sigma),
+        }
+    }
+}
+
+impl Filter for GaussianFilter {
+    fn radius(&self) -> Vector2 {
+        self.radius
+    }
+
+    fn evaluate(&self, p: Point2) -> f64 {
+        f64::max(0.0, util::gaussian(p.x, self.sigma) - self.exp_x)
+            * f64::max(0.0, util::gaussian(p.y, self.sigma) - self.exp_y)
+    }
+}
+
+pub struct BoxFilter {}
+
+impl BoxFilter {
+    pub fn new() -> BoxFilter {
+        BoxFilter {}
+    }
+}
+
+impl Filter for BoxFilter {
+    fn radius(&self) -> Vector2 {
+        Point2::new(0.0, 0.0)
+    }
+
+    fn evaluate(&self, _point: Point2) -> f64 {
+        1.0
+    }
 }

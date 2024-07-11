@@ -57,6 +57,28 @@ impl RgbSpectrum {
     pub fn has_nans(&self) -> bool {
         self.r.is_nan() || self.g.is_nan() || self.b.is_nan()
     }
+
+    pub fn max(&self) -> f64 {
+        f64::max(f64::max(self.r, self.g), self.b)
+    }
+
+    pub fn try_clamp(&self, limit: Option<f64>) -> RgbSpectrum {
+        if limit.is_some() {
+            self.clamp(limit.unwrap())
+        } else {
+            self.clone()
+        }
+    }
+
+    pub fn clamp(&self, limit: f64) -> RgbSpectrum {
+        let max = self.max();
+        if max > limit {
+            let scale = limit / max;
+            scale * (*self)
+        } else {
+            self.clone()
+        }
+    }
 }
 
 impl Add<RgbSpectrum> for RgbSpectrum {

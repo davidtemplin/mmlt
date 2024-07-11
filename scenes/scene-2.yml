@@ -3,9 +3,8 @@ image:
   width: 640
   height: 480
   filter:
-    type: gaussian
-    radius: 16.0
-    alpha: 1.0
+    type: box
+  clamp: 0.5
 
 camera:
   type: pinhole

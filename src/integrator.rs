@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use rand::{distributions::Distribution, thread_rng, Rng};
 
 use crate::{
@@ -33,6 +35,7 @@ impl MmltIntegrator {
 impl Integrator for MmltIntegrator {
     fn integrate(&self, scene: &Scene) -> Image {
         report("Initializing MMLT integrator...");
+        let start = Instant::now();
 
         let mut b = vec![0.0; self.max_path_length - 1];
         let mut rng = thread_rng();
@@ -109,6 +112,9 @@ impl Integrator for MmltIntegrator {
         image.scale(1.0 / self.average_samples_per_pixel as f64);
 
         report("MMLT integration complete");
+
+        let elapsed = start.elapsed();
+        report(&format!("elapsed time: {} seconds", elapsed.as_secs()));
 
         image
     }

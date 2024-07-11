@@ -10,14 +10,14 @@ use crate::{
     shape::{Shape, ShapeConfig},
     spectrum::{Spectrum, SpectrumConfig},
     util,
-    vector::{Point, Vector},
+    vector::{Point3, Vector3},
 };
 
 pub trait Light: fmt::Debug {
-    fn radiance(&self, point: Point, normal: Vector, direction: Vector) -> Spectrum;
+    fn radiance(&self, point: Point3, normal: Vector3, direction: Vector3) -> Spectrum;
     fn sampling_pdf(&self) -> Option<f64>;
-    fn positional_pdf(&self, point: Point) -> Option<f64>;
-    fn directional_pdf(&self, normal: Vector, direction: Vector) -> Option<f64>;
+    fn positional_pdf(&self, point: Point3) -> Option<f64>;
+    fn directional_pdf(&self, normal: Vector3, direction: Vector3) -> Option<f64>;
     fn sample_interaction(&self, sampler: &mut dyn Sampler) -> Interaction;
     fn intersect(&self, ray: Ray) -> Option<Interaction>;
     fn id(&self) -> &String;
@@ -32,7 +32,7 @@ pub struct DiffuseAreaLight {
 }
 
 impl Light for DiffuseAreaLight {
-    fn radiance(&self, _point: Point, normal: Vector, direction: Vector) -> Spectrum {
+    fn radiance(&self, _point: Point3, normal: Vector3, direction: Vector3) -> Spectrum {
         if normal.dot(direction) > 0.0 {
             self.radiance
         } else {
@@ -44,11 +44,11 @@ impl Light for DiffuseAreaLight {
         Some(1.0 / self.light_count as f64)
     }
 
-    fn positional_pdf(&self, _: Point) -> Option<f64> {
+    fn positional_pdf(&self, _: Point3) -> Option<f64> {
         Some(1.0 / self.shape.area())
     }
 
-    fn directional_pdf(&self, normal: Vector, direction: Vector) -> Option<f64> {
+    fn directional_pdf(&self, normal: Vector3, direction: Vector3) -> Option<f64> {
         Some(direction.norm().dot(normal).abs() / PI)
     }
 
@@ -133,14 +133,14 @@ mod tests {
         sampler::test::MockSampler,
         shape::{Parallelogram, Shape, Sphere},
         spectrum::{RgbSpectrum, Spectrum},
-        vector::{Point, Vector},
+        vector::{Point3, Vector3},
     };
 
     use super::DiffuseAreaLight;
 
     #[test]
     fn test_diffuse_area_light_radiance() {
-        let shape = Sphere::new(Point::new(0.0, 0.0, 0.0), 2.0);
+        let shape = Sphere::new(Point3::new(0.0, 0.0, 0.0), 2.0);
         let radiance = RgbSpectrum::fill(10.0);
         let light = DiffuseAreaLight {
             id: String::from("light-1"),
@@ -148,9 +148,9 @@ mod tests {
             radiance,
             light_count: 1,
         };
-        let point = Point::new(0.0, 2.0, 0.0);
-        let normal = Vector::new(0.0, 1.0, 0.0);
-        let direction = Vector::new(1.0, 1.0, 0.0);
+        let point = Point3::new(0.0, 2.0, 0.0);
+        let normal = Vector3::new(0.0, 1.0, 0.0);
+        let direction = Vector3::new(1.0, 1.0, 0.0);
         assert_eq!(light.radiance(point, normal, direction), radiance);
         assert_eq!(light.radiance(point, normal, -direction), Spectrum::black());
     }
@@ -159,7 +159,7 @@ mod tests {
     fn test_diffuse_area_light_pdf() {
         let light_count = 4;
         let radius = 2.0;
-        let shape = Sphere::new(Point::new(0.0, 0.0, 0.0), radius);
+        let shape = Sphere::new(Point3::new(0.0, 0.0, 0.0), radius);
         let area = shape.area();
         let radiance = RgbSpectrum::fill(10.0);
         let light = DiffuseAreaLight {
@@ -168,9 +168,9 @@ mod tests {
             radiance,
             light_count,
         };
-        let point = Point::new(0.0, 2.0, 0.0);
-        let normal = Vector::new(0.0, 1.0, 0.0);
-        let direction = Vector::new(1.0, 1.0, 0.0);
+        let point = Point3::new(0.0, 2.0, 0.0);
+        let normal = Vector3::new(0.0, 1.0, 0.0);
+        let direction = Vector3::new(1.0, 1.0, 0.0);
         let p_light = 1.0 / light_count as f64;
         let p_point = 1.0 / area;
         let p_direction = normal.dot(direction.norm()) / PI;
@@ -187,9 +187,9 @@ mod tests {
 
     #[test]
     fn test_diffuse_area_light_sample_interaction() {
-        let origin = Point::new(0.3, 1.0, 0.3);
-        let a = Vector::new(0.4, 0.0, 0.0);
-        let b = Vector::new(0.0, 0.0, 0.4);
+        let origin = Point3::new(0.3, 1.0, 0.3);
+        let a = Vector3::new(0.4, 0.0, 0.0);
+        let b = Vector3::new(0.0, 0.0, 0.4);
         let shape = Parallelogram::new(origin, a, b);
         let light = DiffuseAreaLight {
             id: String::from("light-1"),
@@ -205,7 +205,7 @@ mod tests {
         if let Interaction::Light(light_interaction) = light.sample_interaction(&mut sampler) {
             assert_eq!(
                 light_interaction.geometry.normal,
-                Vector::new(0.0, -1.0, 0.0)
+                Vector3::new(0.0, -1.0, 0.0)
             );
             assert!(1.0 - light_interaction.geometry.direction.len() < 1.0e-5);
             assert!(

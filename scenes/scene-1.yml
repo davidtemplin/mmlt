@@ -4,8 +4,8 @@ image:
   height: 512
   filter:
     type: gaussian
-    radius: 16.0
-    alpha: 1.0
+    radius: { x: 2.0, y: 2.0 }
+    sigma: 1.0
 
 camera:
   type: pinhole
