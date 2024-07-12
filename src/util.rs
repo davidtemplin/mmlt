@@ -132,7 +132,7 @@ pub fn gaussian(x: f64, sigma: f64) -> f64 {
 mod tests {
     use super::{
         concentric_sample_disk, cosine_sample_hemisphere, direction_to_area, erf_inv,
-        geometry_term, orthonormal_basis,
+        geometry_term, orthonormal_basis, reflect,
     };
     use crate::{sampler::test::MockSampler, vector::Vector3};
     use std::f64::consts::PI;
@@ -216,5 +216,13 @@ mod tests {
         let tolerance = 1.0e-5;
         assert!(1.0 - v.len() < tolerance);
         assert!(v.dot(n) > 0.0);
+    }
+
+    #[test]
+    fn test_reflect() {
+        let d = Vector3::new(-1.0, 1.0, 0.0);
+        let n = Vector3::new(0.0, 1.0, 0.0);
+        let r = reflect(d, n);
+        assert!((r.dot(n) - d.dot(n).abs()) < 1.0e-5);
     }
 }

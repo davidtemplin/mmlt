@@ -1,11 +1,9 @@
 ---
 image:
-  width: 2560
-  height: 1920
+  width: 640
+  height: 480
   filter:
     type: box
-  sample_clamp: 0.5
-  clamp: 200.0
 
 camera:
   type: pinhole
@@ -120,7 +118,7 @@ objects:
       center: { x: 77.0, y: 16.5, z: 78.0 }
       radius: 16.5
     material:
-      type: matte
+      type: metal
       texture:
         type: constant
-        spectrum: { r: 0.99, g: 0.99, b: 0.99 }
+        spectrum: { r: 0.8, g: 0.8, b: 0.8 }
