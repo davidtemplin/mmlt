@@ -28,16 +28,12 @@ pub struct Vertex {
 
 impl Vertex {
     fn weight(&self) -> Option<f64> {
-        if self.forward_pdf.is_none() && self.reverse_pdf.is_none() {
-            None
+        let fwd = self.forward_pdf?;
+        let rev = self.reverse_pdf?;
+        if fwd != 0.0 {
+            Some(rev / fwd)
         } else {
-            let fwd = self.forward_pdf.unwrap_or(1.0);
-            let rev = self.reverse_pdf.unwrap_or(1.0);
-            if fwd != 0.0 {
-                Some(rev / fwd)
-            } else {
-                Some(rev)
-            }
+            Some(rev)
         }
     }
 }
@@ -493,23 +489,34 @@ impl<'a> Path {
     pub fn weight(&self) -> f64 {
         let mut product = 1.0;
         let mut sum = 0.0;
+        let mut previous_delta = false;
 
         for vertex in self.vertices[0..self.technique.camera].iter().rev() {
             if let Some(w) = vertex.weight() {
-                if w != 0.0 {
-                    product = product * w;
-                    sum = sum + product;
-                }
-            }
-        }
-
-        if self.technique.light >= 2 {
-            for vertex in self.vertices[self.technique.camera + 1..].iter() {
-                if let Some(w) = vertex.weight() {
+                if !previous_delta {
                     if w != 0.0 {
                         product = product * w;
                         sum = sum + product;
                     }
+                }
+                previous_delta = false;
+            } else {
+                previous_delta = true;
+            }
+        }
+
+        previous_delta = false;
+
+        if self.technique.light >= 2 {
+            for vertex in self.vertices[self.technique.camera + 1..].iter() {
+                if let Some(w) = vertex.weight() {
+                    if !previous_delta {
+                        if w != 0.0 {
+                            product = product * w;
+                            sum = sum + product;
+                        }
+                    }
+                    previous_delta = false;
                 }
             }
         }

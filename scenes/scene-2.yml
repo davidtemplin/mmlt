@@ -4,6 +4,8 @@ image:
   height: 480
   filter:
     type: box
+  sample_clamp: 0.5
+  clamp: 200.0
 
 camera:
   type: pinhole
@@ -110,7 +112,7 @@ objects:
       type: matte
       texture:
         type: constant
-        spectrum: { r: 0.99, g: 0.99, b: 0.99 }
+        spectrum: { r: 0.8, g: 0.8, b: 0.8 }
   - id: sphere_3
     type: geometric
     shape:
@@ -118,7 +120,7 @@ objects:
       center: { x: 77.0, y: 16.5, z: 78.0 }
       radius: 16.5
     material:
-      type: metal
+      type: matte
       texture:
         type: constant
         spectrum: { r: 0.8, g: 0.8, b: 0.8 }
