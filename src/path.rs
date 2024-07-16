@@ -28,8 +28,8 @@ pub struct Vertex {
 
 impl Vertex {
     fn weight(&self) -> Option<f64> {
-        let fwd = self.forward_pdf?;
-        let rev = self.reverse_pdf?;
+        let fwd = self.forward_pdf.unwrap_or(1.0);
+        let rev = self.reverse_pdf.unwrap_or(1.0);
         if fwd != 0.0 {
             Some(rev / fwd)
         } else {
