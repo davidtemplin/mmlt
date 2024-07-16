@@ -491,13 +491,13 @@ impl<'a> Path {
         let mut sum = 0.0;
         let mut previous_delta = false;
 
-        for vertex in self.vertices[0..self.technique.camera].iter().rev() {
+        for vertex in self.vertices[0..(self.technique.camera - 1)].iter().rev() {
             if let Some(w) = vertex.weight() {
+                if w != 0.0 {
+                    product = product * w;
+                }
                 if !previous_delta {
-                    if w != 0.0 {
-                        product = product * w;
-                        sum = sum + product;
-                    }
+                    sum = sum + product;
                 }
                 previous_delta = false;
             } else {
@@ -506,17 +506,20 @@ impl<'a> Path {
         }
 
         previous_delta = false;
+        product = 1.0;
 
-        if self.technique.light >= 2 {
-            for vertex in self.vertices[self.technique.camera + 1..].iter() {
+        if self.technique.light >= 1 {
+            for vertex in self.vertices[self.technique.camera..].iter() {
                 if let Some(w) = vertex.weight() {
+                    if w != 0.0 {
+                        product = product * w;
+                    }
                     if !previous_delta {
-                        if w != 0.0 {
-                            product = product * w;
-                            sum = sum + product;
-                        }
+                        sum = sum + product;
                     }
                     previous_delta = false;
+                } else {
+                    previous_delta = true;
                 }
             }
         }
