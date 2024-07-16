@@ -37,19 +37,19 @@ impl Material for MatteMaterial {
 }
 
 #[derive(Debug)]
-pub struct MetalMaterial {
+pub struct MirrorMaterial {
     texture: Box<dyn Texture>,
 }
 
-impl MetalMaterial {
-    pub fn configure(config: &MetalMaterialConfig) -> MetalMaterial {
-        MetalMaterial {
+impl MirrorMaterial {
+    pub fn configure(config: &MirrorMaterialConfig) -> MirrorMaterial {
+        MirrorMaterial {
             texture: config.texture.configure(),
         }
     }
 }
 
-impl Material for MetalMaterial {
+impl Material for MirrorMaterial {
     fn compute_bsdf(&self, geometry: Geometry) -> Bsdf {
         Bsdf {
             bxdfs: vec![Box::new(SpecularBrdf::new(
@@ -98,7 +98,7 @@ impl Material for GlossyMaterial {
 pub enum MaterialConfig {
     Matte(MatteMaterialConfig),
     Glossy(GlossyMaterialConfig),
-    Metal(MetalMaterialConfig),
+    Mirror(MirrorMaterialConfig),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -107,7 +107,7 @@ pub struct MatteMaterialConfig {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct MetalMaterialConfig {
+pub struct MirrorMaterialConfig {
     texture: TextureConfig,
 }
 
@@ -116,7 +116,7 @@ impl MaterialConfig {
         match self {
             MaterialConfig::Matte(c) => Box::new(MatteMaterial::configure(&c)),
             MaterialConfig::Glossy(c) => Box::new(GlossyMaterial::configure(&c)),
-            MaterialConfig::Metal(c) => Box::new(MetalMaterial::configure(&c)),
+            MaterialConfig::Mirror(c) => Box::new(MirrorMaterial::configure(&c)),
         }
     }
 }
