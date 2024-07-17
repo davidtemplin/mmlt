@@ -493,7 +493,7 @@ impl<'a> Path {
         let mut product = 1.0;
         let mut sum = 0.0;
 
-        for vertex in self.vertices[0..self.technique.camera].iter().rev() {
+        for vertex in self.vertices[0..(self.technique.camera - 1)].iter().rev() {
             if let Some(w) = vertex.weight() {
                 if w != 0.0 {
                     product = product * w;
@@ -504,8 +504,8 @@ impl<'a> Path {
 
         product = 1.0;
 
-        if self.technique.light >= 2 {
-            for vertex in self.vertices[(self.technique.camera + 1)..].iter() {
+        if self.technique.light >= 1 {
+            for vertex in self.vertices[self.technique.camera..].iter() {
                 if let Some(w) = vertex.weight() {
                     if w != 0.0 {
                         product = product * w;
