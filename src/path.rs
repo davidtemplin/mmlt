@@ -33,11 +33,10 @@ impl Vertex {
         }
         let fwd = self.forward_pdf.unwrap_or(1.0);
         let rev = self.reverse_pdf.unwrap_or(1.0);
-        if fwd != 0.0 {
-            Some(rev / fwd)
-        } else {
-            Some(rev)
+        if fwd == 0.0 {
+            return None;
         }
+        Some(rev / fwd)
     }
 }
 
@@ -493,23 +492,19 @@ impl<'a> Path {
         let mut product = 1.0;
         let mut sum = 0.0;
 
-        for vertex in self.vertices[0..(self.technique.camera - 1)].iter().rev() {
+        for vertex in self.vertices[0..self.technique.camera].iter().rev() {
             if let Some(w) = vertex.weight() {
-                if w != 0.0 {
-                    product = product * w;
-                }
+                product = product * w;
                 sum = sum + product;
             }
         }
 
         product = 1.0;
 
-        if self.technique.light >= 1 {
-            for vertex in self.vertices[self.technique.camera..].iter() {
+        if self.technique.light >= 2 {
+            for vertex in self.vertices[(self.technique.camera + 1)..].iter() {
                 if let Some(w) = vertex.weight() {
-                    if w != 0.0 {
-                        product = product * w;
-                    }
+                    product = product * w;
                     sum = sum + product;
                 }
             }
