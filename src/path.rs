@@ -27,13 +27,13 @@ pub struct Vertex {
 }
 
 impl Vertex {
-    fn weight(&self) -> Option<f64> {
+    fn weight(&self) -> f64 {
         let fwd = self.forward_pdf.unwrap_or(1.0);
         let rev = self.reverse_pdf.unwrap_or(1.0);
         if fwd != 0.0 {
-            Some(rev / fwd)
+            rev / fwd
         } else {
-            Some(rev)
+            rev
         }
     }
 }
@@ -489,38 +489,24 @@ impl<'a> Path {
     pub fn weight(&self) -> f64 {
         let mut product = 1.0;
         let mut sum = 0.0;
-        let mut previous_delta = false;
 
-        for vertex in self.vertices[0..(self.technique.camera - 1)].iter().rev() {
-            if let Some(w) = vertex.weight() {
-                if w != 0.0 {
-                    product = product * w;
-                }
-                if !previous_delta {
-                    sum = sum + product;
-                }
-                previous_delta = false;
-            } else {
-                previous_delta = true;
+        for vertex in self.vertices[0..self.technique.camera].iter().rev() {
+            let w = vertex.weight();
+            if w != 0.0 {
+                product = product * w;
             }
+            sum = sum + product;
         }
 
-        previous_delta = false;
         product = 1.0;
 
         if self.technique.light >= 1 {
             for vertex in self.vertices[self.technique.camera..].iter() {
-                if let Some(w) = vertex.weight() {
-                    if w != 0.0 {
-                        product = product * w;
-                    }
-                    if !previous_delta {
-                        sum = sum + product;
-                    }
-                    previous_delta = false;
-                } else {
-                    previous_delta = true;
+                let w = vertex.weight();
+                if w != 0.0 {
+                    product = product * w;
                 }
+                sum = sum + product;
             }
         }
 
