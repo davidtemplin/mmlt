@@ -501,8 +501,8 @@ impl<'a> Path {
 
         product = 1.0;
 
-        if self.technique.light >= 2 {
-            for vertex in self.vertices[(self.technique.camera + 1)..].iter() {
+        if self.technique.light >= 1 {
+            for vertex in self.vertices[self.technique.camera..].iter() {
                 if let Some(w) = vertex.weight() {
                     product = product * w;
                     sum = sum + product;
