@@ -1,7 +1,7 @@
 use std::cell::OnceCell;
 
 use crate::{
-    bsdf::Bsdf,
+    bsdf::{Bsdf, EvaluationContext},
     camera::Camera,
     geometry::Geometry,
     light::Light,
@@ -62,8 +62,8 @@ impl<'a> ObjectInteraction<'a> {
         self.get_bsdf().pdf(wo, wi, path_type)
     }
 
-    pub fn reflectance(&self, wo: Vector3, wi: Vector3) -> Spectrum {
-        self.get_bsdf().evaluate(wo, wi)
+    pub fn reflectance(&self, wo: Vector3, wi: Vector3, context: EvaluationContext) -> Spectrum {
+        self.get_bsdf().evaluate(wo, wi, context)
     }
 }
 

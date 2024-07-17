@@ -8,7 +8,7 @@ pub struct Bsdf {
 }
 
 pub trait Bxdf: fmt::Debug {
-    fn evaluate(&self, wo: Vector3, wi: Vector3) -> Spectrum;
+    fn evaluate(&self, wo: Vector3, wi: Vector3, context: EvaluationContext) -> Spectrum;
     fn pdf(&self, wo: Vector3, wi: Vector3, path_type: PathType) -> Option<f64>;
     fn sample_direction(
         &self,
@@ -18,11 +18,16 @@ pub trait Bxdf: fmt::Debug {
     ) -> Vector3;
 }
 
+#[derive(Debug, Copy, Clone)]
+pub struct EvaluationContext {
+    pub geometry_term: f64,
+}
+
 impl Bsdf {
-    pub fn evaluate(&self, wo: Vector3, wi: Vector3) -> Spectrum {
+    pub fn evaluate(&self, wo: Vector3, wi: Vector3, context: EvaluationContext) -> Spectrum {
         self.bxdfs
             .iter()
-            .map(|bxdf| bxdf.evaluate(wo, wi))
+            .map(|bxdf| bxdf.evaluate(wo, wi, context))
             .fold(Spectrum::black(), |a, b| a + b)
     }
 
@@ -71,7 +76,7 @@ impl DiffuseBrdf {
 }
 
 impl Bxdf for DiffuseBrdf {
-    fn evaluate(&self, wo: Vector3, wi: Vector3) -> Spectrum {
+    fn evaluate(&self, wo: Vector3, wi: Vector3, _: EvaluationContext) -> Spectrum {
         if util::same_hemisphere(self.normal, wo, wi) {
             self.scale / PI
         } else {
@@ -111,11 +116,11 @@ impl SpecularBrdf {
 }
 
 impl Bxdf for SpecularBrdf {
-    fn evaluate(&self, wo: Vector3, wi: Vector3) -> Spectrum {
+    fn evaluate(&self, wo: Vector3, wi: Vector3, context: EvaluationContext) -> Spectrum {
         let d1 = wo.norm().dot(self.normal);
         let d2 = wi.norm().dot(self.normal);
         if util::equals(d1, d2, 0.0001) {
-            self.scale / d2.abs()
+            self.scale / context.geometry_term
         } else {
             Spectrum::black()
         }
@@ -134,7 +139,11 @@ impl Bxdf for SpecularBrdf {
 mod tests {
     use super::{Bxdf, DiffuseBrdf, SpecularBrdf};
     use crate::{
-        bsdf::Bsdf, sampler::test::MockSampler, spectrum::Spectrum, types::PathType, util,
+        bsdf::{Bsdf, EvaluationContext},
+        sampler::test::MockSampler,
+        spectrum::Spectrum,
+        types::PathType,
+        util,
         vector::Vector3,
     };
     use std::f64::consts::PI;
@@ -146,7 +155,8 @@ mod tests {
         let brdf = DiffuseBrdf::new(normal, scale);
         let wo = Vector3::new(1.0, 1.0, 0.0);
         let wi = Vector3::new(-1.0, 1.0, 0.0);
-        let actual = brdf.evaluate(wo, wi);
+        let context = EvaluationContext { geometry_term: 1.0 };
+        let actual = brdf.evaluate(wo, wi, context);
         let expected = scale / PI;
         assert_eq!(actual, expected);
     }
@@ -158,7 +168,8 @@ mod tests {
         let brdf = DiffuseBrdf::new(normal, scale);
         let wo = Vector3::new(1.0, 1.0, 0.0);
         let wi = Vector3::new(-1.0, -1.0, 0.0);
-        let actual = brdf.evaluate(wo, wi);
+        let context = EvaluationContext { geometry_term: 1.0 };
+        let actual = brdf.evaluate(wo, wi, context);
         let expected = Spectrum::fill(0.0);
         assert_eq!(actual, expected);
     }
@@ -220,7 +231,8 @@ mod tests {
         let brdf = SpecularBrdf::new(normal, scale);
         let wo = Vector3::new(1.0, 1.0, 0.0);
         let wi = Vector3::new(-1.0, 1.0, 0.0);
-        let actual = brdf.evaluate(wo, wi);
+        let context = EvaluationContext { geometry_term: 1.0 };
+        let actual = brdf.evaluate(wo, wi, context);
         assert_eq!(actual, scale);
     }
 
@@ -231,7 +243,8 @@ mod tests {
         let brdf = SpecularBrdf::new(normal, scale);
         let wo = Vector3::new(1.0, 1.0, 0.0);
         let wi = Vector3::new(-1.0, 1.1, 0.0);
-        let actual = brdf.evaluate(wo, wi);
+        let context = EvaluationContext { geometry_term: 1.0 };
+        let actual = brdf.evaluate(wo, wi, context);
         assert_eq!(actual, Spectrum::black());
     }
 
@@ -269,7 +282,8 @@ mod tests {
         let bsdf = Bsdf {
             bxdfs: vec![Box::new(brdf1), Box::new(brdf2)],
         };
-        let actual = bsdf.evaluate(wo, wi);
+        let context = EvaluationContext { geometry_term: 1.0 };
+        let actual = bsdf.evaluate(wo, wi, context);
         let expected = scale + (scale / PI);
         assert_eq!(actual, expected);
     }

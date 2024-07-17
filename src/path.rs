@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 
 use crate::{
+    bsdf::EvaluationContext,
     geometry::Geometry,
     interaction::Interaction,
     ray::Ray,
@@ -400,8 +401,9 @@ impl<'a> Path {
                     let next_normal = next_geometry?.normal;
                     let wo = previous_geometry?.point - point;
                     let wi = next_geometry?.point - point;
-                    let reflectance = object_interaction.reflectance(wo, wi);
                     let geometry_term = util::geometry_term(wi, normal, next_normal);
+                    let context = EvaluationContext { geometry_term };
+                    let reflectance = object_interaction.reflectance(wo, wi, context);
                     let throughput = reflectance * geometry_term;
                     let vertex = match technique.path_type(index) {
                         PathType::Camera => Vertex {
