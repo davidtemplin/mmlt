@@ -121,7 +121,7 @@ pub fn equals(a: f64, b: f64, tolerance: f64) -> bool {
 }
 
 pub fn reflect(d: Vector3, n: Vector3) -> Vector3 {
-    d - (2.0 * d.dot(n) * n)
+    -d + (2.0 * d.dot(n) * n)
 }
 
 pub fn gaussian(x: f64, sigma: f64) -> f64 {
@@ -223,6 +223,7 @@ mod tests {
         let d = Vector3::new(-1.0, 1.0, 0.0);
         let n = Vector3::new(0.0, 1.0, 0.0);
         let r = reflect(d, n);
-        assert!((r.dot(n) - d.dot(n).abs()) < 1.0e-5);
+        let expected = Vector3::new(1.0, 1.0, 0.0);
+        assert!((expected - r).len() < 1e-5);
     }
 }

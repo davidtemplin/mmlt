@@ -131,7 +131,7 @@ impl Bxdf for SpecularBrdf {
     }
 
     fn sample_direction(&self, wx: Vector3, _: PathType, _: &mut dyn Sampler) -> Vector3 {
-        util::reflect(-wx, self.normal)
+        util::reflect(wx, self.normal)
     }
 }
 
