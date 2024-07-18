@@ -128,6 +128,59 @@ pub fn gaussian(x: f64, sigma: f64) -> f64 {
     f64::exp(-(x * x) / (2.0 * sigma * sigma))
 }
 
+pub fn safe_sqrt(x: f64) -> f64 {
+    f64::max(0.0, 1.0 - x).sqrt()
+}
+
+pub fn refract(wi: Vector3, mut n: Vector3, mut eta: f64) -> Option<Vector3> {
+    let mut cos_theta_i = n.dot(wi);
+
+    if cos_theta_i < 0.0 {
+        eta = 1.0 / eta;
+        cos_theta_i = -cos_theta_i;
+        n = -n;
+    }
+
+    let sin2_theta_i = f64::max(0.0, 1.0 - (cos_theta_i * cos_theta_i));
+    let sin2_theta_t = sin2_theta_i / (eta * eta);
+    if sin2_theta_t >= 1.0 {
+        return None;
+    }
+
+    let cos_theta_t = safe_sqrt(1.0 - sin2_theta_t);
+
+    let wt = -wi / eta + (cos_theta_i / eta - cos_theta_t) * n;
+
+    Some(wt)
+}
+
+pub fn sqr(x: f64) -> f64 {
+    x * x
+}
+
+pub fn fresnel_dielectric(mut cos_theta_i: f64, mut eta: f64) -> f64 {
+    cos_theta_i = cos_theta_i.clamp(-1.0, 1.0);
+
+    if cos_theta_i < 0.0 {
+        eta = 1.0 / eta;
+        cos_theta_i = -cos_theta_i;
+    }
+
+    let sin2_theta_i = 1.0 - sqr(cos_theta_i);
+    let sin2_theta_t = sin2_theta_i / sqr(eta);
+    if sin2_theta_t >= 1.0 {
+        return 1.0;
+    }
+
+    let cos_theta_t = safe_sqrt(1.0 - sin2_theta_t);
+
+    let r_parallel = (eta * cos_theta_i - cos_theta_t) / (eta * cos_theta_i + cos_theta_t);
+
+    let r_perpendicular = (cos_theta_i - eta * cos_theta_t) / (cos_theta_i + eta * cos_theta_t);
+
+    (sqr(r_parallel) + sqr(r_perpendicular)) / 2.0
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
