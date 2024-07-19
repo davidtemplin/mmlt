@@ -58,6 +58,10 @@ impl<'a> ObjectInteraction<'a> {
         }
     }
 
+    pub fn sampling_pdf(&self, wo: Vector3) -> Option<f64> {
+        self.get_bsdf().sampling_pdf(wo)
+    }
+
     pub fn pdf(&self, wo: Vector3, wi: Vector3, path_type: PathType) -> Option<f64> {
         self.get_bsdf().pdf(wo, wi, path_type)
     }

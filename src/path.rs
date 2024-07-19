@@ -328,6 +328,7 @@ impl<'a> Path {
         let mut pixel_coordinates: Option<Point2> = None;
         let mut area_pdf: Option<f64> = None;
         let mut previous_geometry: Option<Geometry> = None;
+        let mut previous_object_sampling_pdf: Option<f64> = None;
         for (index, interaction) in interactions.iter().enumerate() {
             let next_geometry = interactions.get(index + 1).map(Interaction::geometry);
             match interaction {
@@ -396,6 +397,13 @@ impl<'a> Path {
                     }
                 }
                 Interaction::Object(object_interaction) => {
+                    let combine = |area: Option<f64>, sampling: Option<f64>| {
+                        if area.is_some() {
+                            area.map(|a| a * sampling.unwrap_or(1.0))
+                        } else {
+                            sampling
+                        }
+                    };
                     let point = object_interaction.geometry.point;
                     let normal = object_interaction.geometry.normal;
                     let next_normal = next_geometry?.normal;
@@ -405,16 +413,17 @@ impl<'a> Path {
                     let context = EvaluationContext { geometry_term };
                     let reflectance = object_interaction.reflectance(wo, wi, context);
                     let throughput = reflectance * geometry_term;
+                    let current_object_sampling_pdf = object_interaction.sampling_pdf(wo);
                     let vertex = match technique.path_type(index) {
                         PathType::Camera => Vertex {
                             throughput,
-                            forward_pdf: area_pdf,
+                            forward_pdf: combine(area_pdf, previous_object_sampling_pdf),
                             reverse_pdf: None,
                         },
                         PathType::Light => Vertex {
                             throughput,
                             forward_pdf: None,
-                            reverse_pdf: area_pdf,
+                            reverse_pdf: combine(area_pdf, previous_object_sampling_pdf),
                         },
                     };
                     vertices.push(vertex);
@@ -426,16 +435,19 @@ impl<'a> Path {
                         previous_directional_pdf.map(|p| p * previous_direction_to_area);
                     match technique.path_type(index - 1) {
                         PathType::Camera => {
-                            previous_vertex.reverse_pdf = previous_area_pdf;
+                            previous_vertex.reverse_pdf =
+                                combine(previous_area_pdf, current_object_sampling_pdf);
                         }
                         PathType::Light => {
-                            previous_vertex.forward_pdf = previous_area_pdf;
+                            previous_vertex.forward_pdf =
+                                combine(previous_area_pdf, current_object_sampling_pdf);
                         }
                     }
                     let next_normal = next_geometry?.normal;
                     let next_directional_pdf = object_interaction.pdf(wo, wi, PathType::Camera);
                     let next_direction_to_area = util::direction_to_area(wi, next_normal);
                     area_pdf = next_directional_pdf.map(|p| p * next_direction_to_area);
+                    previous_object_sampling_pdf = current_object_sampling_pdf;
                 }
             }
 

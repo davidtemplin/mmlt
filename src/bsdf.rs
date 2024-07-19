@@ -9,6 +9,7 @@ pub struct Bsdf {
 
 pub trait Bxdf: fmt::Debug {
     fn evaluate(&self, wo: Vector3, wi: Vector3, context: EvaluationContext) -> Spectrum;
+    fn sampling_pdf(&self, wo: Vector3) -> Option<f64>;
     fn pdf(&self, wo: Vector3, wi: Vector3, path_type: PathType) -> Option<f64>;
     fn sample_direction(
         &self,
@@ -41,6 +42,25 @@ impl Bsdf {
         let r = sampler.sample(0.0..length).floor();
         let i = r as usize;
         self.bxdfs[i].sample_direction(wx, path_type, sampler)
+    }
+
+    pub fn sampling_pdf(&self, wo: Vector3) -> Option<f64> {
+        let mut count = 0;
+        let mut sum = 0.0;
+        for bxdf in &self.bxdfs {
+            let result = bxdf.sampling_pdf(wo);
+            if result.is_some() {
+                count = count + 1;
+            }
+            let p = result.unwrap_or(0.0);
+            sum = sum + p;
+        }
+        if count > 0 {
+            let length = self.bxdfs.len() as f64;
+            Some(sum / length)
+        } else {
+            None
+        }
     }
 
     pub fn pdf(&self, wo: Vector3, wi: Vector3, path_type: PathType) -> Option<f64> {
@@ -84,6 +104,10 @@ impl Bxdf for DiffuseBrdf {
         }
     }
 
+    fn sampling_pdf(&self, _: Vector3) -> Option<f64> {
+        None
+    }
+
     fn pdf(&self, wo: Vector3, wi: Vector3, _: PathType) -> Option<f64> {
         let p = if util::same_hemisphere(self.normal, wo, wi) {
             util::abs_cos_theta(self.normal, wi) / PI
@@ -124,6 +148,10 @@ impl Bxdf for SpecularBrdf {
         } else {
             Spectrum::black()
         }
+    }
+
+    fn sampling_pdf(&self, _: Vector3) -> Option<f64> {
+        None
     }
 
     fn pdf(&self, _: Vector3, _: Vector3, _: PathType) -> Option<f64> {
