@@ -1,10 +1,11 @@
 use std::{f64::consts::PI, fmt};
 
 use crate::{
+    approx::ApproxEq,
     sampler::Sampler,
     spectrum::Spectrum,
     types::PathType,
-    util::{self, fresnel_dielectric},
+    util::{self},
     vector::Vector3,
 };
 
@@ -28,6 +29,7 @@ pub trait Bxdf: fmt::Debug {
 #[derive(Debug, Copy, Clone)]
 pub struct EvaluationContext {
     pub geometry_term: f64,
+    pub path_type: PathType,
 }
 
 impl Bsdf {
@@ -185,16 +187,37 @@ impl DielectricBxdf {
     pub fn new(normal: Vector3, scale: Spectrum, eta: f64) -> DielectricBxdf {
         DielectricBxdf { normal, scale, eta }
     }
+
+    fn evaluate_internal(&self, wo: Vector3, wi: Vector3) -> Spectrum {
+        let reflection = util::reflect(wo, self.normal);
+        if wi.approx_eq(reflection, 1e-6) {
+            let cos_theta = util::cos_theta(self.normal, wo);
+            let r = util::fresnel_dielectric(cos_theta, self.eta);
+            self.scale * r
+        } else {
+            let refraction = util::refract(wo, self.normal, self.eta);
+            if refraction.is_none() {
+                return Spectrum::black();
+            }
+            if wi.approx_eq(refraction.unwrap(), 1e-6) {
+                let cos_theta = util::cos_theta(self.normal, wo);
+                let r = util::fresnel_dielectric(cos_theta, self.eta);
+                let t = 1.0 - r;
+                self.scale * t
+            } else {
+                Spectrum::black()
+            }
+        }
+    }
 }
 
 impl Bxdf for DielectricBxdf {
     fn evaluate(&self, wo: Vector3, wi: Vector3, context: EvaluationContext) -> Spectrum {
-        let cos_theta_o = util::cos_theta(self.normal, wo);
-        let cos_theta_i = util::cos_theta(self.normal, wi);
-        let reflect = cos_theta_i * cos_theta_o > 0.0;
-        let r = fresnel_dielectric(cos_theta_i, self.eta);
-        let v = if reflect { r } else { 1.0 - r };
-        self.scale * v / context.geometry_term
+        let result = match context.path_type {
+            PathType::Camera => self.evaluate_internal(wi, wo),
+            PathType::Light => self.evaluate_internal(wo, wi),
+        };
+        result / context.geometry_term
     }
 
     fn sampling_pdf(&self, wo: Vector3) -> Option<f64> {
@@ -211,14 +234,17 @@ impl Bxdf for DielectricBxdf {
     fn sample_direction(
         &self,
         wx: Vector3,
-        _path_type: PathType,
+        path_type: PathType,
         sampler: &mut dyn Sampler,
     ) -> Option<Vector3> {
         let r = self.sampling_pdf(wx).unwrap();
         if sampler.sample(0.0..1.0) < r {
             Some(util::reflect(wx, self.normal))
         } else {
-            util::refract(wx, self.normal, self.eta)
+            match path_type {
+                PathType::Camera => util::refract(wx, self.normal, 1.0 / self.eta),
+                PathType::Light => util::refract(wx, self.normal, self.eta),
+            }
         }
     }
 }
@@ -243,7 +269,10 @@ mod tests {
         let brdf = DiffuseBrdf::new(normal, scale);
         let wo = Vector3::new(1.0, 1.0, 0.0);
         let wi = Vector3::new(-1.0, 1.0, 0.0);
-        let context = EvaluationContext { geometry_term: 1.0 };
+        let context = EvaluationContext {
+            geometry_term: 1.0,
+            path_type: PathType::Camera,
+        };
         let actual = brdf.evaluate(wo, wi, context);
         let expected = scale / PI;
         assert_eq!(actual, expected);
@@ -256,7 +285,10 @@ mod tests {
         let brdf = DiffuseBrdf::new(normal, scale);
         let wo = Vector3::new(1.0, 1.0, 0.0);
         let wi = Vector3::new(-1.0, -1.0, 0.0);
-        let context = EvaluationContext { geometry_term: 1.0 };
+        let context = EvaluationContext {
+            geometry_term: 1.0,
+            path_type: PathType::Camera,
+        };
         let actual = brdf.evaluate(wo, wi, context);
         let expected = Spectrum::fill(0.0);
         assert_eq!(actual, expected);
@@ -323,7 +355,10 @@ mod tests {
         let brdf = SpecularBrdf::new(normal, scale);
         let wo = Vector3::new(1.0, 1.0, 0.0);
         let wi = Vector3::new(-1.0, 1.0, 0.0);
-        let context = EvaluationContext { geometry_term: 1.0 };
+        let context = EvaluationContext {
+            geometry_term: 1.0,
+            path_type: PathType::Camera,
+        };
         let actual = brdf.evaluate(wo, wi, context);
         assert_eq!(actual, scale);
     }
@@ -335,7 +370,10 @@ mod tests {
         let brdf = SpecularBrdf::new(normal, scale);
         let wo = Vector3::new(1.0, 1.0, 0.0);
         let wi = Vector3::new(-1.0, 1.1, 0.0);
-        let context = EvaluationContext { geometry_term: 1.0 };
+        let context = EvaluationContext {
+            geometry_term: 1.0,
+            path_type: PathType::Camera,
+        };
         let actual = brdf.evaluate(wo, wi, context);
         assert_eq!(actual, Spectrum::black());
     }
@@ -376,7 +414,10 @@ mod tests {
         let bsdf = Bsdf {
             bxdfs: vec![Box::new(brdf1), Box::new(brdf2)],
         };
-        let context = EvaluationContext { geometry_term: 1.0 };
+        let context = EvaluationContext {
+            geometry_term: 1.0,
+            path_type: PathType::Camera,
+        };
         let actual = bsdf.evaluate(wo, wi, context);
         let expected = scale + (scale / PI);
         assert_eq!(actual, expected);

@@ -410,7 +410,10 @@ impl<'a> Path {
                     let wo = previous_geometry?.point - point;
                     let wi = next_geometry?.point - point;
                     let geometry_term = util::geometry_term(wi, normal, next_normal);
-                    let context = EvaluationContext { geometry_term };
+                    let context = EvaluationContext {
+                        geometry_term,
+                        path_type: technique.path_type(index),
+                    };
                     let reflectance = object_interaction.reflectance(wo, wi, context);
                     let throughput = reflectance * geometry_term;
                     let current_object_sampling_pdf = object_interaction.sampling_pdf(wo);
