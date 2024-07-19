@@ -416,7 +416,8 @@ impl<'a> Path {
                     };
                     let reflectance = object_interaction.reflectance(wo, wi, context);
                     let throughput = reflectance * geometry_term;
-                    let current_object_sampling_pdf = object_interaction.sampling_pdf(wo);
+                    let current_object_sampling_pdf =
+                        object_interaction.sampling_pdf(wo, technique.path_type(index));
                     let vertex = match technique.path_type(index) {
                         PathType::Camera => Vertex {
                             throughput,

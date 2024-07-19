@@ -120,7 +120,8 @@ objects:
       center: { x: 77.0, y: 16.5, z: 78.0 }
       radius: 16.5
     material:
-      type: mirror
+      type: dielectric
+      eta: 1.6
       texture:
         type: constant
         spectrum: { r: 1.0, g: 1.0, b: 1.0 }
