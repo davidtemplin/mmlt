@@ -16,7 +16,7 @@ pub struct Bsdf {
 
 pub trait Bxdf: fmt::Debug {
     fn evaluate(&self, wo: Vector3, wi: Vector3, context: EvaluationContext) -> Spectrum;
-    fn sampling_pdf(&self, wo: Vector3, path_type: PathType) -> Option<f64>;
+    fn sampling_pdf(&self, wx: Vector3, path_type: PathType) -> Option<f64>;
     fn pdf(&self, wo: Vector3, wi: Vector3, path_type: PathType) -> Option<f64>;
     fn sample_direction(
         &self,
@@ -52,11 +52,11 @@ impl Bsdf {
         self.bxdfs[i].sample_direction(wx, path_type, sampler)
     }
 
-    pub fn sampling_pdf(&self, wo: Vector3, path_type: PathType) -> Option<f64> {
+    pub fn sampling_pdf(&self, wx: Vector3, path_type: PathType) -> Option<f64> {
         let mut count = 0;
         let mut sum = 0.0;
         for bxdf in &self.bxdfs {
-            let result = bxdf.sampling_pdf(wo, path_type);
+            let result = bxdf.sampling_pdf(wx, path_type);
             if result.is_some() {
                 count = count + 1;
             }
@@ -188,20 +188,20 @@ impl DielectricBxdf {
         DielectricBxdf { normal, scale, eta }
     }
 
-    fn evaluate_internal(&self, wo: Vector3, wi: Vector3, eta: f64) -> Spectrum {
-        let reflection = util::reflect(wo, self.normal);
-        if wi.approx_eq(reflection, 1e-6) {
-            let cos_theta = util::cos_theta(self.normal, wo);
-            let r = util::fresnel_dielectric(cos_theta, eta);
+    fn evaluate_internal(&self, wi: Vector3, wt: Vector3) -> Spectrum {
+        let reflection = util::reflect(wi, self.normal);
+        if wt.approx_eq(reflection, 1e-6) {
+            let cos_theta = util::cos_theta(self.normal, wi);
+            let r = util::fresnel_dielectric(cos_theta, self.eta);
             self.scale * r
         } else {
-            let refraction = util::refract(wo, self.normal, eta);
+            let refraction = util::refract(wi.norm(), self.normal, self.eta);
             if refraction.is_none() {
                 return Spectrum::black();
             }
-            if wi.approx_eq(refraction.unwrap(), 1e-6) {
-                let cos_theta = util::cos_theta(self.normal, wo);
-                let r = util::fresnel_dielectric(cos_theta, eta);
+            if wt.approx_eq(refraction.unwrap(), 1e-6) {
+                let cos_theta = util::cos_theta(self.normal, wi);
+                let r = util::fresnel_dielectric(cos_theta, self.eta);
                 let t = 1.0 - r;
                 self.scale * t
             } else {
@@ -214,18 +214,15 @@ impl DielectricBxdf {
 impl Bxdf for DielectricBxdf {
     fn evaluate(&self, wo: Vector3, wi: Vector3, context: EvaluationContext) -> Spectrum {
         let result = match context.path_type {
-            PathType::Camera => self.evaluate_internal(wi, wo, 1.0 / self.eta),
-            PathType::Light => self.evaluate_internal(wo, wi, self.eta),
+            PathType::Camera => self.evaluate_internal(wo, wi),
+            PathType::Light => self.evaluate_internal(wi, wo),
         };
         result / context.geometry_term
     }
 
-    fn sampling_pdf(&self, wo: Vector3, path_type: PathType) -> Option<f64> {
-        let eta = match path_type {
-            PathType::Camera => self.eta,
-            PathType::Light => 1.0 / self.eta,
-        };
-        let r = util::fresnel_dielectric(util::cos_theta(self.normal, wo), eta);
+    fn sampling_pdf(&self, wx: Vector3, _path_type: PathType) -> Option<f64> {
+        let cos_theta_i = util::cos_theta(self.normal, wx);
+        let r = util::fresnel_dielectric(cos_theta_i, self.eta);
         Some(r)
     }
 
@@ -243,10 +240,7 @@ impl Bxdf for DielectricBxdf {
         if sampler.sample(0.0..1.0) < r {
             Some(util::reflect(wx, self.normal))
         } else {
-            match path_type {
-                PathType::Camera => util::refract(wx, self.normal, 1.0 / self.eta),
-                PathType::Light => util::refract(wx, self.normal, self.eta),
-            }
+            util::refract(wx.norm(), self.normal, self.eta)
         }
     }
 }

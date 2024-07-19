@@ -133,7 +133,7 @@ pub fn safe_sqrt(x: f64) -> f64 {
 }
 
 pub fn refract(wi: Vector3, mut n: Vector3, mut eta: f64) -> Option<Vector3> {
-    let mut cos_theta_i = n.dot(wi);
+    let mut cos_theta_i = cos_theta(n, wi);
 
     if cos_theta_i < 0.0 {
         eta = 1.0 / eta;
@@ -141,8 +141,8 @@ pub fn refract(wi: Vector3, mut n: Vector3, mut eta: f64) -> Option<Vector3> {
         n = -n;
     }
 
-    let sin2_theta_i = f64::max(0.0, 1.0 - (cos_theta_i * cos_theta_i));
-    let sin2_theta_t = sin2_theta_i / (eta * eta);
+    let sin2_theta_i = f64::max(0.0, 1.0 - sqr(cos_theta_i));
+    let sin2_theta_t = sin2_theta_i / sqr(eta);
     if sin2_theta_t >= 1.0 {
         return None;
     }
@@ -158,8 +158,8 @@ pub fn sqr(x: f64) -> f64 {
     x * x
 }
 
-pub fn cos_theta(n: Vector3, wx: Vector3) -> f64 {
-    n.dot(wx)
+pub fn cos_theta(a: Vector3, b: Vector3) -> f64 {
+    a.dot(b)
 }
 
 pub fn fresnel_dielectric(mut cos_theta_i: f64, mut eta: f64) -> f64 {
@@ -189,9 +189,9 @@ pub fn fresnel_dielectric(mut cos_theta_i: f64, mut eta: f64) -> f64 {
 mod tests {
     use super::{
         concentric_sample_disk, cosine_sample_hemisphere, direction_to_area, erf_inv,
-        geometry_term, orthonormal_basis, reflect,
+        geometry_term, orthonormal_basis, reflect, refract,
     };
-    use crate::{sampler::test::MockSampler, vector::Vector3};
+    use crate::{approx::ApproxEq, sampler::test::MockSampler, vector::Vector3};
     use std::f64::consts::PI;
 
     #[test]
@@ -282,5 +282,16 @@ mod tests {
         let r = reflect(d, n);
         let expected = Vector3::new(1.0, 1.0, 0.0);
         assert!((expected - r).len() < 1e-5);
+    }
+
+    #[test]
+    fn test_refract() {
+        let wi = Vector3::new(-1.0, 1.0, 0.0).norm();
+        let n = Vector3::new(0.0, 1.0, 0.0);
+        let eta = 1.0;
+        let r = refract(wi, n, eta);
+        assert!(r.is_some());
+        let expected = -wi;
+        assert!(r.unwrap().approx_eq(expected, 1e-6));
     }
 }

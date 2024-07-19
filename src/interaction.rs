@@ -59,8 +59,8 @@ impl<'a> ObjectInteraction<'a> {
         Some(ray)
     }
 
-    pub fn sampling_pdf(&self, wo: Vector3, path_type: PathType) -> Option<f64> {
-        self.get_bsdf().sampling_pdf(wo, path_type)
+    pub fn sampling_pdf(&self, wx: Vector3, path_type: PathType) -> Option<f64> {
+        self.get_bsdf().sampling_pdf(wx, path_type)
     }
 
     pub fn pdf(&self, wo: Vector3, wi: Vector3, path_type: PathType) -> Option<f64> {
