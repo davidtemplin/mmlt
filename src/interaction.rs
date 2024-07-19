@@ -46,16 +46,17 @@ impl<'a> ObjectInteraction<'a> {
             .get_or_init(|| self.object.compute_bsdf(self.geometry))
     }
 
-    pub fn generate_ray(&self, path_type: PathType, sampler: &mut dyn Sampler) -> Ray {
+    pub fn generate_ray(&self, path_type: PathType, sampler: &mut dyn Sampler) -> Option<Ray> {
         let wx = self.geometry.direction * -1.0;
         let direction = self
             .get_bsdf()
-            .sample_direction(wx, path_type, sampler)
+            .sample_direction(wx, path_type, sampler)?
             .norm();
-        Ray {
+        let ray = Ray {
             origin: self.geometry.point,
             direction,
-        }
+        };
+        Some(ray)
     }
 
     pub fn sampling_pdf(&self, wo: Vector3) -> Option<f64> {
@@ -91,7 +92,7 @@ impl<'a> Interaction<'a> {
             Interaction::Camera(_) => None,
             Interaction::Light(_) => None,
             Interaction::Object(object_interaction) => {
-                Some(object_interaction.generate_ray(path_type, sampler))
+                object_interaction.generate_ray(path_type, sampler)
             }
         }
     }

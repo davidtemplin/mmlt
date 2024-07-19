@@ -158,6 +158,10 @@ pub fn sqr(x: f64) -> f64 {
     x * x
 }
 
+pub fn cos_theta(n: Vector3, wx: Vector3) -> f64 {
+    n.dot(wx)
+}
+
 pub fn fresnel_dielectric(mut cos_theta_i: f64, mut eta: f64) -> f64 {
     cos_theta_i = cos_theta_i.clamp(-1.0, 1.0);
 

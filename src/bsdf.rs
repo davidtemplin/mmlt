@@ -1,6 +1,12 @@
 use std::{f64::consts::PI, fmt};
 
-use crate::{sampler::Sampler, spectrum::Spectrum, types::PathType, util, vector::Vector3};
+use crate::{
+    sampler::Sampler,
+    spectrum::Spectrum,
+    types::PathType,
+    util::{self, fresnel_dielectric},
+    vector::Vector3,
+};
 
 #[derive(Debug)]
 pub struct Bsdf {
@@ -16,7 +22,7 @@ pub trait Bxdf: fmt::Debug {
         wx: Vector3,
         path_type: PathType,
         sampler: &mut dyn Sampler,
-    ) -> Vector3;
+    ) -> Option<Vector3>;
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -37,7 +43,7 @@ impl Bsdf {
         wx: Vector3,
         path_type: PathType,
         sampler: &mut dyn Sampler,
-    ) -> Vector3 {
+    ) -> Option<Vector3> {
         let length = self.bxdfs.len() as f64;
         let r = sampler.sample(0.0..length).floor();
         let i = r as usize;
@@ -117,12 +123,17 @@ impl Bxdf for DiffuseBrdf {
         Some(p)
     }
 
-    fn sample_direction(&self, wo: Vector3, _: PathType, sampler: &mut dyn Sampler) -> Vector3 {
+    fn sample_direction(
+        &self,
+        wo: Vector3,
+        _: PathType,
+        sampler: &mut dyn Sampler,
+    ) -> Option<Vector3> {
         let wi = util::cosine_sample_hemisphere(self.normal, sampler);
         if util::same_hemisphere(self.normal, wi, wo) {
-            wi
+            Some(wi)
         } else {
-            -wi
+            Some(-wi)
         }
     }
 }
@@ -158,8 +169,57 @@ impl Bxdf for SpecularBrdf {
         None
     }
 
-    fn sample_direction(&self, wx: Vector3, _: PathType, _: &mut dyn Sampler) -> Vector3 {
-        util::reflect(wx, self.normal)
+    fn sample_direction(&self, wx: Vector3, _: PathType, _: &mut dyn Sampler) -> Option<Vector3> {
+        Some(util::reflect(wx, self.normal))
+    }
+}
+
+#[derive(Debug)]
+pub struct DielectricBxdf {
+    scale: Spectrum,
+    normal: Vector3,
+    eta: f64,
+}
+
+impl DielectricBxdf {
+    pub fn new(normal: Vector3, scale: Spectrum, eta: f64) -> DielectricBxdf {
+        DielectricBxdf { normal, scale, eta }
+    }
+}
+
+impl Bxdf for DielectricBxdf {
+    fn evaluate(&self, wo: Vector3, wi: Vector3, context: EvaluationContext) -> Spectrum {
+        let cos_theta_o = util::cos_theta(self.normal, wo);
+        let cos_theta_i = util::cos_theta(self.normal, wi);
+        let reflect = cos_theta_i * cos_theta_o > 0.0;
+        let r = fresnel_dielectric(cos_theta_i, self.eta);
+        let v = if reflect { r } else { 1.0 - r };
+        self.scale * v / context.geometry_term
+    }
+
+    fn sampling_pdf(&self, wo: Vector3) -> Option<f64> {
+        Some(util::fresnel_dielectric(
+            util::cos_theta(self.normal, wo),
+            self.eta,
+        ))
+    }
+
+    fn pdf(&self, _: Vector3, _: Vector3, _: PathType) -> Option<f64> {
+        None
+    }
+
+    fn sample_direction(
+        &self,
+        wx: Vector3,
+        _path_type: PathType,
+        sampler: &mut dyn Sampler,
+    ) -> Option<Vector3> {
+        let r = self.sampling_pdf(wx).unwrap();
+        if sampler.sample(0.0..1.0) < r {
+            Some(util::reflect(wx, self.normal))
+        } else {
+            util::refract(wx, self.normal, self.eta)
+        }
     }
 }
 
@@ -235,7 +295,9 @@ mod tests {
         let mut sampler = MockSampler::new();
         sampler.add(0.25);
         sampler.add(0.25);
-        let direction = brdf.sample_direction(wo, PathType::Camera, &mut sampler);
+        let direction = brdf
+            .sample_direction(wo, PathType::Camera, &mut sampler)
+            .unwrap();
         assert!(normal.dot(direction).is_sign_positive());
     }
 
@@ -248,7 +310,9 @@ mod tests {
         let mut sampler = MockSampler::new();
         sampler.add(0.25);
         sampler.add(0.25);
-        let direction = brdf.sample_direction(wo, PathType::Camera, &mut sampler);
+        let direction = brdf
+            .sample_direction(wo, PathType::Camera, &mut sampler)
+            .unwrap();
         assert!(normal.dot(direction).is_sign_positive());
     }
 
@@ -294,7 +358,9 @@ mod tests {
         let wo = Vector3::new(1.0, 1.0, 0.0);
         let brdf = SpecularBrdf::new(normal, scale);
         let mut sampler = MockSampler::new();
-        let direction = brdf.sample_direction(wo, PathType::Camera, &mut sampler);
+        let direction = brdf
+            .sample_direction(wo, PathType::Camera, &mut sampler)
+            .unwrap();
         let expected = util::reflect(wo, normal);
         assert_eq!(direction, expected);
     }
@@ -344,7 +410,9 @@ mod tests {
         };
         let mut sampler = MockSampler::new();
         sampler.add(0.9);
-        let actual = bsdf.sample_direction(wo, PathType::Camera, &mut sampler);
+        let actual = bsdf
+            .sample_direction(wo, PathType::Camera, &mut sampler)
+            .unwrap();
         let expected = util::reflect(wo, normal);
         assert_eq!(actual, expected);
     }

@@ -3,7 +3,7 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    bsdf::{Bsdf, DiffuseBrdf, SpecularBrdf},
+    bsdf::{Bsdf, DielectricBxdf, DiffuseBrdf, SpecularBrdf},
     geometry::Geometry,
     texture::{Texture, TextureConfig},
 };
@@ -92,6 +92,33 @@ impl Material for GlossyMaterial {
     }
 }
 
+#[derive(Debug)]
+pub struct DielectricMaterial {
+    texture: Box<dyn Texture>,
+    eta: f64,
+}
+
+impl DielectricMaterial {
+    pub fn configure(config: &DielectricMaterialConfig) -> DielectricMaterial {
+        DielectricMaterial {
+            texture: config.texture.configure(),
+            eta: config.eta,
+        }
+    }
+}
+
+impl Material for DielectricMaterial {
+    fn compute_bsdf(&self, geometry: Geometry) -> Bsdf {
+        Bsdf {
+            bxdfs: vec![Box::new(DielectricBxdf::new(
+                geometry.normal,
+                self.texture.evaluate(geometry),
+                self.eta,
+            ))],
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
@@ -99,6 +126,7 @@ pub enum MaterialConfig {
     Matte(MatteMaterialConfig),
     Glossy(GlossyMaterialConfig),
     Mirror(MirrorMaterialConfig),
+    Dielectric(DielectricMaterialConfig),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -117,6 +145,7 @@ impl MaterialConfig {
             MaterialConfig::Matte(c) => Box::new(MatteMaterial::configure(&c)),
             MaterialConfig::Glossy(c) => Box::new(GlossyMaterial::configure(&c)),
             MaterialConfig::Mirror(c) => Box::new(MirrorMaterial::configure(&c)),
+            MaterialConfig::Dielectric(c) => Box::new(DielectricMaterial::configure(&c)),
         }
     }
 }
@@ -125,4 +154,10 @@ impl MaterialConfig {
 pub struct GlossyMaterialConfig {
     diffuse_texture: TextureConfig,
     specular_texture: TextureConfig,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DielectricMaterialConfig {
+    texture: TextureConfig,
+    eta: f64,
 }
