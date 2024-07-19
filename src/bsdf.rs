@@ -236,7 +236,7 @@ impl Bxdf for DielectricBxdf {
         path_type: PathType,
         sampler: &mut dyn Sampler,
     ) -> Option<Vector3> {
-        let r = self.sampling_pdf(wx, path_type).unwrap();
+        let r = self.sampling_pdf(wx, path_type)?;
         if sampler.sample(0.0..1.0) < r {
             Some(util::reflect(wx, self.normal))
         } else {
