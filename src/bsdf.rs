@@ -223,7 +223,11 @@ impl Bxdf for DielectricBxdf {
     fn sampling_pdf(&self, wx: Vector3, _path_type: PathType) -> Option<f64> {
         let cos_theta_i = util::cos_theta(self.normal, wx);
         let r = util::fresnel_dielectric(cos_theta_i, self.eta);
-        Some(r)
+        if cos_theta_i < 0.0 {
+            Some(1.0 - r)
+        } else {
+            Some(r)
+        }
     }
 
     fn pdf(&self, _: Vector3, _: Vector3, _: PathType) -> Option<f64> {
