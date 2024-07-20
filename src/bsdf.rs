@@ -239,6 +239,7 @@ impl Bxdf for DielectricBxdf {
         // TODO: ensure paths are created correctly
         // TODO: disable reflection when internal to object; use flags?
         // TODO: check PDF calculation and application in path.rs
+        // TODO: need to use adjusted eta/cos_theta anywhere above?
         let r = self.sampling_pdf(wx, path_type)?;
         if sampler.sample(0.0..1.0) < r {
             Some(util::reflect(wx, self.normal))
