@@ -159,7 +159,7 @@ pub fn sqr(x: f64) -> f64 {
 }
 
 pub fn cos_theta(a: Vector3, b: Vector3) -> f64 {
-    a.dot(b)
+    a.norm().dot(b.norm())
 }
 
 pub fn fresnel_dielectric(mut cos_theta_i: f64, mut eta: f64) -> f64 {

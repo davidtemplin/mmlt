@@ -189,17 +189,17 @@ impl DielectricBxdf {
     }
 
     fn evaluate_internal(&self, wi: Vector3, wt: Vector3) -> Spectrum {
-        let reflection = util::reflect(wi, self.normal);
-        if wt.approx_eq(reflection, 1e-6) {
+        let reflection = util::reflect(wi.norm(), self.normal);
+        if wt.norm().approx_eq(reflection, 1e-6) {
             let cos_theta = util::cos_theta(self.normal, wi);
             let r = util::fresnel_dielectric(cos_theta, self.eta);
             self.scale * r
         } else {
-            let refraction = util::refract(wi.norm(), self.normal, self.eta);
+            let refraction = util::refract(wi.norm(), self.normal.norm(), self.eta);
             if refraction.is_none() {
                 return Spectrum::black();
             }
-            if wt.approx_eq(refraction.unwrap(), 1e-6) {
+            if wt.norm().approx_eq(refraction.unwrap(), 1e-6) {
                 let cos_theta = util::cos_theta(self.normal, wi);
                 let r = util::fresnel_dielectric(cos_theta, self.eta);
                 let t = 1.0 - r;
@@ -240,7 +240,7 @@ impl Bxdf for DielectricBxdf {
         if sampler.sample(0.0..1.0) < r {
             Some(util::reflect(wx, self.normal))
         } else {
-            util::refract(wx.norm(), self.normal, self.eta)
+            util::refract(wx.norm(), self.normal.norm(), self.eta)
         }
     }
 }
