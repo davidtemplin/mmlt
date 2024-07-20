@@ -236,6 +236,8 @@ impl Bxdf for DielectricBxdf {
         path_type: PathType,
         sampler: &mut dyn Sampler,
     ) -> Option<Vector3> {
+        // TODO: ensure paths are created correctly
+        // TODO: disable reflection when internal to object; use flags?
         let r = self.sampling_pdf(wx, path_type)?;
         if sampler.sample(0.0..1.0) < r {
             Some(util::reflect(wx, self.normal))

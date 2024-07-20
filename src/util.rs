@@ -129,7 +129,7 @@ pub fn gaussian(x: f64, sigma: f64) -> f64 {
 }
 
 pub fn safe_sqrt(x: f64) -> f64 {
-    f64::max(0.0, 1.0 - x).sqrt()
+    f64::max(0.0, x).sqrt()
 }
 
 pub fn refract(wi: Vector3, mut n: Vector3, mut eta: f64) -> Option<Vector3> {
@@ -286,12 +286,30 @@ mod tests {
 
     #[test]
     fn test_refract() {
-        let wi = Vector3::new(-1.0, 1.0, 0.0).norm();
+        let mut wi = Vector3::new(-1.0, 1.0, 0.0).norm();
         let n = Vector3::new(0.0, 1.0, 0.0);
-        let eta = 1.0;
-        let r = refract(wi, n, eta);
-        assert!(r.is_some());
-        let expected = -wi;
-        assert!(r.unwrap().approx_eq(expected, 1e-6));
+        let mut eta = 1.0;
+        let mut wt = refract(wi, n, eta);
+        assert!(wt.is_some());
+        let mut expected = -wi;
+        assert!(wt.unwrap().approx_eq(expected, 1e-6));
+
+        eta = 1.6;
+        let mut theta_i = 30.0 * PI / 180.0;
+        wi = Vector3::new(-f64::sin(theta_i), f64::cos(theta_i), 0.0);
+        wt = refract(wi, n, eta);
+        assert!(wt.is_some());
+        let theta_t = 18.20996 * PI / 180.0;
+        expected = Vector3::new(f64::sin(theta_t), -f64::cos(theta_t), 0.0);
+        assert!(wt.unwrap().approx_eq(expected, 1e-6));
+
+        eta = 1.8;
+        theta_i = 20.0 * PI / 180.0;
+        wi = Vector3::new(-f64::sin(theta_i), f64::cos(theta_i), 0.0);
+        wt = refract(wi, n, eta);
+        assert!(wt.is_some());
+        let theta_t = 10.95344 * PI / 180.0;
+        expected = Vector3::new(f64::sin(theta_t), -f64::cos(theta_t), 0.0);
+        assert!(wt.unwrap().approx_eq(expected, 1e-6));
     }
 }
