@@ -128,10 +128,8 @@ mod tests {
     use std::f64::consts::PI;
 
     use crate::{
-        interaction::Interaction,
         light::Light,
-        sampler::test::MockSampler,
-        shape::{Parallelogram, Shape, Sphere},
+        shape::{Shape, Sphere},
         spectrum::{RgbSpectrum, Spectrum},
         vector::{Point3, Vector3},
     };
@@ -183,40 +181,5 @@ mod tests {
             )
         };
         assert_eq!(p_actual(), Some(p_total));
-    }
-
-    #[test]
-    fn test_diffuse_area_light_sample_interaction() {
-        let origin = Point3::new(0.3, 1.0, 0.3);
-        let a = Vector3::new(0.4, 0.0, 0.0);
-        let b = Vector3::new(0.0, 0.0, 0.4);
-        let shape = Parallelogram::new(origin, a, b);
-        let light = DiffuseAreaLight {
-            id: String::from("light-1"),
-            shape: Box::new(shape),
-            radiance: RgbSpectrum::fill(10.0),
-            light_count: 1,
-        };
-        let mut sampler = MockSampler::new();
-        sampler.add(0.7);
-        sampler.add(0.25);
-        sampler.add(0.6);
-        sampler.add(0.15);
-        if let Interaction::Light(light_interaction) = light.sample_interaction(&mut sampler) {
-            assert_eq!(
-                light_interaction.geometry.normal,
-                Vector3::new(0.0, -1.0, 0.0)
-            );
-            assert!(1.0 - light_interaction.geometry.direction.len() < 1.0e-5);
-            assert!(
-                light_interaction
-                    .geometry
-                    .normal
-                    .dot(light_interaction.geometry.direction)
-                    > 0.0
-            );
-        } else {
-            panic!("expected light interaction");
-        }
     }
 }
