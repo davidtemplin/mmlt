@@ -16,11 +16,18 @@ camera:
     unit: degrees
 
 lights:
-  - id: light
+  - id: light_1
     type: diffuse_area
     shape:
       type: sphere
       center: { x: 10.0, y: 250.0, z: 51.6 }
+      radius: 100.0
+    spectrum: { r: 30.0, g: 30.0, b: 30.0 }
+  - id: light_2
+    type: diffuse_area
+    shape:
+      type: sphere
+      center: { x: 10.0, y: 1400.0, z: -2700.0 }
       radius: 100.0
     spectrum: { r: 30.0, g: 30.0, b: 30.0 }
 
@@ -40,7 +47,7 @@ objects:
     type: geometric
     shape:
       type: sphere
-      center: { x: 50.0, y: 40.8, z: -10500.0 }
+      center: { x: 50.0, y: 40.8, z: -13000.0 }
       radius: 10000
     material:
       type: matte
