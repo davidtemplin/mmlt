@@ -237,11 +237,12 @@ impl Bxdf for DielectricBxdf {
     fn sample_direction(
         &self,
         wx: Vector3,
-        path_type: PathType,
+        _: PathType,
         sampler: &mut dyn Sampler,
     ) -> Option<Vector3> {
         // TODO: disable reflection when internal to object; use flags?
-        let r = self.sampling_pdf(wx, path_type)?;
+        let cos_theta_i = util::cos_theta(self.normal, wx);
+        let r = util::fresnel_dielectric(cos_theta_i, self.eta);
         if sampler.sample(0.0..1.0) < r {
             Some(util::reflect(wx, self.normal))
         } else {
@@ -252,8 +253,9 @@ impl Bxdf for DielectricBxdf {
 
 #[cfg(test)]
 mod tests {
-    use super::{Bxdf, DiffuseBrdf, SpecularBrdf};
+    use super::{Bxdf, DielectricBxdf, DiffuseBrdf, SpecularBrdf};
     use crate::{
+        approx::ApproxEq,
         bsdf::{Bsdf, EvaluationContext},
         sampler::test::MockSampler,
         spectrum::Spectrum,
@@ -402,6 +404,38 @@ mod tests {
             .unwrap();
         let expected = util::reflect(wo, normal);
         assert_eq!(direction, expected);
+    }
+
+    #[test]
+    fn test_dielectric_bxdf() {
+        let normal = Vector3::new(0.0, 1.0, 0.0);
+        let scale = Spectrum::fill(1.0);
+        let eta = 1.6;
+        let theta_i = 30.0 * PI / 180.0;
+        let wi = Vector3::new(-f64::sin(theta_i), f64::cos(theta_i), 0.0);
+        let theta_t = 18.20996 * PI / 180.0;
+        let expected = Vector3::new(f64::sin(theta_t), -f64::cos(theta_t), 0.0);
+        let bxdf = DielectricBxdf::new(normal, scale, eta);
+        let mut sampler = MockSampler::new();
+        let path_type = PathType::Light;
+        sampler.add(0.5); // 0.5 > r
+        let mut wt = bxdf.sample_direction(wi, path_type, &mut sampler).unwrap();
+        assert!(wt.approx_eq(expected, 1e-5));
+        let mut pdf = bxdf.sampling_pdf(wt, PathType::Light).unwrap();
+        let r = 0.0549528214871777;
+        assert!(util::equals(pdf, 1.0 - r, 1e-5));
+        let context = EvaluationContext {
+            geometry_term: 1.0,
+            path_type,
+        };
+        let mut e = bxdf.evaluate(wt, wi, context);
+        assert!(!e.is_black());
+        sampler.add(0.04); // 0.04 < r
+        wt = bxdf.sample_direction(wi, path_type, &mut sampler).unwrap();
+        pdf = bxdf.sampling_pdf(wt, path_type).unwrap();
+        assert!(util::equals(pdf, r, 1e-5));
+        e = bxdf.evaluate(wt, wi, context);
+        assert!(!e.is_black());
     }
 
     #[test]
