@@ -1,0 +1,138 @@
+---
+image:
+  width: 640
+  height: 480
+  filter:
+    type: box
+  sample_clamp: 0.5
+  clamp: 200.0
+
+camera:
+  type: pinhole
+  origin: { x: 0.0, y: 25.0, z: 0.0 }
+  look_at: { x: 0.0, y: 0.0, z: 100.0 }
+  field_of_view:
+    value: 60.0
+    unit: degrees
+
+lights:
+  - id: light_1
+    type: diffuse_area
+    shape:
+      type: sphere
+      center: { x: -50.0, y: 100.0, z: 80.0 }
+      radius: 50.0
+    spectrum: { r: 50.0, g: 50.0, b: 50.0 }
+
+objects:
+  - id: floor
+    type: geometric
+    shape:
+      type: sphere
+      center: { x: 0.0, y: -10000.0, z: 100.0 }
+      radius: 10000.0
+    material:
+      type: matte
+      texture:
+        type: constant
+        spectrum: { r: 1.0, g: 1.0, b: 1.0 }
+  - id: backdrop
+    type: geometric
+    shape:
+      type: sphere
+      center: { x: 0.0, y: 0.0, z: 500.0 }
+      radius: 350.0
+    material:
+      type: matte
+      texture:
+        type: constant
+        spectrum: { r: 1.0, g: 1.0, b: 1.0 }
+  - id: sphere_1
+    type: geometric
+    shape:
+      type: sphere
+      center: { x: 0.0, y: 15.0, z: 100.0 }
+      radius: 15.0
+    material:
+      type: matte
+      texture:
+        type: constant
+        spectrum: { r: 1.0, g: 1.0, b: 1.0 }
+  - id: sphere_2
+    type: geometric
+    shape:
+      type: sphere
+      center: { x: 50.0, y: 15.0, z: 100.0 }
+      radius: 15.0
+    material:
+      type: mirror
+      texture:
+        type: constant
+        spectrum: { r: 1.0, g: 1.0, b: 1.0 }
+  - id: sphere_3
+    type: geometric
+    shape:
+      type: sphere
+      center: { x: -50.0, y: 15.0, z: 100.0 }
+      radius: 15.0
+    material:
+      type: matte
+      texture:
+        type: constant
+        spectrum: { r: 1.0, g: 1.0, b: 1.0 }
+  - id: sphere_4
+    type: geometric
+    shape:
+      type: sphere
+      center: { x: -40.0, y: 6.0, z: 80.0 }
+      radius: 6.0
+    material:
+      type: matte
+      texture:
+        type: constant
+        spectrum: { r: 0.8, g: 0.1, b: 0.1 }
+  - id: sphere_5
+    type: geometric
+    shape:
+      type: sphere
+      center: { x: -20.0, y: 6.0, z: 80.0 }
+      radius: 6.0
+    material:
+      type: matte
+      texture:
+        type: constant
+        spectrum: { r: 1.0, g: 1.0, b: 1.0 }
+  - id: sphere_5
+    type: geometric
+    shape:
+      type: sphere
+      center: { x: 0.0, y: 6.0, z: 80.0 }
+      radius: 6.0
+    material:
+      type: matte
+      texture:
+        type: constant
+        spectrum: { r: 0.1, g: 0.1, b: 1.0 }
+  - id: sphere_6
+    type: geometric
+    shape:
+      type: sphere
+      center: { x: 20.0, y: 6.0, z: 80.0 }
+      radius: 6.0
+    material:
+      type: dielectric
+      eta: 1.6
+      texture:
+        type: constant
+        spectrum: { r: 1.0, g: 1.0, b: 1.0 }
+  - id: sphere_7
+    type: geometric
+    shape:
+      type: sphere
+      center: { x: 40.0, y: 6.0, z: 80.0 }
+      radius: 6.0
+    material:
+      type: matte
+      texture:
+        type: constant
+        spectrum: { r: 0.1, g: 1.0, b: 0.1 }
