@@ -2,6 +2,8 @@ use std::ops::{Add, Div, Mul};
 
 use serde::{Deserialize, Serialize};
 
+use crate::{approx::ApproxEq, util};
+
 pub type Spectrum = RgbSpectrum;
 
 const LUMINANCE_WEIGHT: RgbSpectrum = RgbSpectrum {
@@ -78,6 +80,14 @@ impl RgbSpectrum {
         } else {
             self.clone()
         }
+    }
+}
+
+impl ApproxEq for RgbSpectrum {
+    fn approx_eq(&self, other: Self, tolerance: f64) -> bool {
+        util::equals(self.r, other.r, tolerance)
+            && util::equals(self.g, other.g, tolerance)
+            && util::equals(self.b, other.b, tolerance)
     }
 }
 

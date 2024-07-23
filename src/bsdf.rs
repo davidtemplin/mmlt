@@ -431,25 +431,60 @@ mod tests {
         let expected = Vector3::new(f64::sin(theta_t), -f64::cos(theta_t), 0.0);
         let bxdf = DielectricBxdf::new(normal, scale, eta);
         let mut sampler = MockSampler::new();
-        let path_type = PathType::Camera;
+
+        // Camera path
+        let mut path_type = PathType::Camera;
+
+        // Refraction
         sampler.add(0.5); // 0.5 > r
         let mut wt = bxdf.sample_direction(wi, path_type, &mut sampler).unwrap();
         assert!(wt.approx_eq(expected, 1e-5));
         let mut pdf = bxdf.sampling_pdf(wi, wt, path_type).unwrap();
         let r = 0.0549528214871777;
         assert!(util::equals(pdf, 1.0 - r, 1e-5));
-        let context = EvaluationContext {
-            geometry_term: 1.0,
+        let geometry_term = 0.4; // arbitrary
+        let mut context = EvaluationContext {
+            geometry_term,
             path_type,
         };
-        let mut e = bxdf.evaluate(wt, wi, context);
-        assert!(!e.is_black());
+        let mut e = bxdf.evaluate(wi, wt, context);
+        let mut expected_e = Spectrum::fill(((1.0 - r) / geometry_term) / util::sqr(eta));
+        assert!(e.approx_eq(expected_e, 1e-5));
+
+        // Reflection
         sampler.add(0.04); // 0.04 < r
         wt = bxdf.sample_direction(wi, path_type, &mut sampler).unwrap();
         pdf = bxdf.sampling_pdf(wi, wt, path_type).unwrap();
         assert!(util::equals(pdf, r, 1e-5));
+        e = bxdf.evaluate(wi, wt, context);
+        expected_e = Spectrum::fill(r / geometry_term);
+        assert!(e.approx_eq(expected_e, 1e-5));
+
+        // Light path
+        path_type = PathType::Light;
+        context = EvaluationContext {
+            geometry_term,
+            path_type,
+        };
+
+        // Refraction
+        sampler.add(0.5);
+        wt = bxdf.sample_direction(wi, path_type, &mut sampler).unwrap();
+        assert!(wt.approx_eq(expected, 1e-5));
+        pdf = bxdf.sampling_pdf(wt, wi, path_type).unwrap();
+        assert!(util::equals(pdf, 1.0 - r, 1e-5));
         e = bxdf.evaluate(wt, wi, context);
-        assert!(!e.is_black());
+        expected_e = Spectrum::fill((1.0 - r) / geometry_term);
+        assert!(e.approx_eq(expected_e, 1e-5));
+
+        // Reflection
+        sampler.add(0.04); // 0.04 < r
+        wt = bxdf.sample_direction(wi, path_type, &mut sampler).unwrap();
+        pdf = bxdf.sampling_pdf(wt, wi, path_type).unwrap();
+        assert!(util::equals(pdf, r, 1e-5));
+        e = bxdf.evaluate(wt, wi, context);
+        expected_e = Spectrum::fill(r / geometry_term);
+        assert!(e.approx_eq(expected_e, 1e-5));
     }
 
     #[test]
