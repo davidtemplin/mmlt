@@ -217,13 +217,24 @@ impl DielectricBxdf {
     }
 
     fn sampling_pdf_internal(&self, wi: Vector3, wt: Vector3) -> Option<f64> {
-        let cos_theta_t = util::cos_theta(self.normal, wt);
-        let cos_theta_i = util::cos_theta(self.normal, wi);
-        let r = util::fresnel_dielectric(cos_theta_i, self.eta);
-        if cos_theta_t < 0.0 {
-            Some(1.0 - r)
-        } else {
+        let reflection = util::reflect(wi.norm(), self.normal);
+        if wt.norm().approx_eq(reflection, 1e-6) {
+            let cos_theta = util::cos_theta(self.normal, wi);
+            let r = util::fresnel_dielectric(cos_theta, self.eta);
             Some(r)
+        } else {
+            let refraction = util::refract(wi.norm(), self.normal.norm(), self.eta);
+            if refraction.is_none() {
+                return None;
+            }
+            if wt.norm().approx_eq(refraction.unwrap(), 1e-6) {
+                let cos_theta = util::cos_theta(self.normal, wi);
+                let r = util::fresnel_dielectric(cos_theta, self.eta);
+                let t = 1.0 - r;
+                Some(t)
+            } else {
+                None
+            }
         }
     }
 }
