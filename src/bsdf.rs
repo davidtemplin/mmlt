@@ -428,7 +428,7 @@ mod tests {
         let theta_i = 30.0 * PI / 180.0;
         let wi = Vector3::new(-f64::sin(theta_i), f64::cos(theta_i), 0.0);
         let theta_t = 18.20996 * PI / 180.0;
-        let expected = Vector3::new(f64::sin(theta_t), -f64::cos(theta_t), 0.0);
+        let mut expected_wt = Vector3::new(f64::sin(theta_t), -f64::cos(theta_t), 0.0);
         let bxdf = DielectricBxdf::new(normal, scale, eta);
         let mut sampler = MockSampler::new();
 
@@ -438,7 +438,7 @@ mod tests {
         // Refraction
         sampler.add(0.5); // 0.5 > r
         let mut wt = bxdf.sample_direction(wi, path_type, &mut sampler).unwrap();
-        assert!(wt.approx_eq(expected, 1e-5));
+        assert!(wt.approx_eq(expected_wt, 1e-5));
         let mut pdf = bxdf.sampling_pdf(wi, wt, path_type).unwrap();
         let r = 0.0549528214871777;
         assert!(util::equals(pdf, 1.0 - r, 1e-5));
@@ -454,6 +454,8 @@ mod tests {
         // Reflection
         sampler.add(0.04); // 0.04 < r
         wt = bxdf.sample_direction(wi, path_type, &mut sampler).unwrap();
+        expected_wt = Vector3::new(-wi.x, wi.y, 0.0);
+        assert!(wt.approx_eq(expected_wt, 1e-5));
         pdf = bxdf.sampling_pdf(wi, wt, path_type).unwrap();
         assert!(util::equals(pdf, r, 1e-5));
         e = bxdf.evaluate(wi, wt, context);
@@ -470,7 +472,8 @@ mod tests {
         // Refraction
         sampler.add(0.5);
         wt = bxdf.sample_direction(wi, path_type, &mut sampler).unwrap();
-        assert!(wt.approx_eq(expected, 1e-5));
+        expected_wt = Vector3::new(f64::sin(theta_t), -f64::cos(theta_t), 0.0);
+        assert!(wt.approx_eq(expected_wt, 1e-5));
         pdf = bxdf.sampling_pdf(wt, wi, path_type).unwrap();
         assert!(util::equals(pdf, 1.0 - r, 1e-5));
         e = bxdf.evaluate(wt, wi, context);
@@ -480,6 +483,8 @@ mod tests {
         // Reflection
         sampler.add(0.04); // 0.04 < r
         wt = bxdf.sample_direction(wi, path_type, &mut sampler).unwrap();
+        expected_wt = Vector3::new(-wi.x, wi.y, 0.0);
+        assert!(wt.approx_eq(expected_wt, 1e-5));
         pdf = bxdf.sampling_pdf(wt, wi, path_type).unwrap();
         assert!(util::equals(pdf, r, 1e-5));
         e = bxdf.evaluate(wt, wi, context);
