@@ -188,7 +188,7 @@ impl DielectricBxdf {
         DielectricBxdf { normal, scale, eta }
     }
 
-    fn evaluate_internal(&self, wi: Vector3, wt: Vector3) -> Spectrum {
+    fn evaluate_internal(&self, wi: Vector3, wt: Vector3, adjoint: bool) -> Spectrum {
         let reflection = util::reflect(wi.norm(), self.normal);
         if wt.norm().approx_eq(reflection, 1e-6) {
             let cos_theta = util::cos_theta(self.normal, wi);
@@ -203,7 +203,13 @@ impl DielectricBxdf {
                 let cos_theta = util::cos_theta(self.normal, wi);
                 let r = util::fresnel_dielectric(cos_theta, self.eta);
                 let t = 1.0 - r;
-                self.scale * t
+                let eta_actual = if cos_theta < 0.0 {
+                    1.0 / self.eta
+                } else {
+                    self.eta
+                };
+                let adjoint_factor = if adjoint { util::sqr(eta_actual) } else { 1.0 };
+                self.scale * t / adjoint_factor
             } else {
                 Spectrum::black()
             }
@@ -225,8 +231,8 @@ impl DielectricBxdf {
 impl Bxdf for DielectricBxdf {
     fn evaluate(&self, wo: Vector3, wi: Vector3, context: EvaluationContext) -> Spectrum {
         let result = match context.path_type {
-            PathType::Camera => self.evaluate_internal(wo, wi),
-            PathType::Light => self.evaluate_internal(wi, wo),
+            PathType::Camera => self.evaluate_internal(wo, wi, true),
+            PathType::Light => self.evaluate_internal(wi, wo, false),
         };
         result / context.geometry_term
     }
