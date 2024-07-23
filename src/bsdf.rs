@@ -16,7 +16,7 @@ pub struct Bsdf {
 
 pub trait Bxdf: fmt::Debug {
     fn evaluate(&self, wo: Vector3, wi: Vector3, context: EvaluationContext) -> Spectrum;
-    fn sampling_pdf(&self, wx: Vector3, path_type: PathType) -> Option<f64>;
+    fn sampling_pdf(&self, wo: Vector3, wi: Vector3, path_type: PathType) -> Option<f64>;
     fn pdf(&self, wo: Vector3, wi: Vector3, path_type: PathType) -> Option<f64>;
     fn sample_direction(
         &self,
@@ -52,11 +52,11 @@ impl Bsdf {
         self.bxdfs[i].sample_direction(wx, path_type, sampler)
     }
 
-    pub fn sampling_pdf(&self, wx: Vector3, path_type: PathType) -> Option<f64> {
+    pub fn sampling_pdf(&self, wo: Vector3, wi: Vector3, path_type: PathType) -> Option<f64> {
         let mut count = 0;
         let mut sum = 0.0;
         for bxdf in &self.bxdfs {
-            let result = bxdf.sampling_pdf(wx, path_type);
+            let result = bxdf.sampling_pdf(wo, wi, path_type);
             if result.is_some() {
                 count = count + 1;
             }
@@ -112,7 +112,7 @@ impl Bxdf for DiffuseBrdf {
         }
     }
 
-    fn sampling_pdf(&self, _: Vector3, _: PathType) -> Option<f64> {
+    fn sampling_pdf(&self, _: Vector3, _: Vector3, _: PathType) -> Option<f64> {
         None
     }
 
@@ -163,7 +163,7 @@ impl Bxdf for SpecularBrdf {
         }
     }
 
-    fn sampling_pdf(&self, _: Vector3, _: PathType) -> Option<f64> {
+    fn sampling_pdf(&self, _: Vector3, _: Vector3, _: PathType) -> Option<f64> {
         None
     }
 
@@ -209,6 +209,17 @@ impl DielectricBxdf {
             }
         }
     }
+
+    fn sampling_pdf_internal(&self, wi: Vector3, wt: Vector3) -> Option<f64> {
+        let cos_theta_t = util::cos_theta(self.normal, wt);
+        let cos_theta_i = util::cos_theta(self.normal, wi);
+        let r = util::fresnel_dielectric(cos_theta_i, self.eta);
+        if cos_theta_t < 0.0 {
+            Some(1.0 - r)
+        } else {
+            Some(r)
+        }
+    }
 }
 
 impl Bxdf for DielectricBxdf {
@@ -220,13 +231,10 @@ impl Bxdf for DielectricBxdf {
         result / context.geometry_term
     }
 
-    fn sampling_pdf(&self, wx: Vector3, _path_type: PathType) -> Option<f64> {
-        let cos_theta_i = util::cos_theta(self.normal, wx);
-        let r = util::fresnel_dielectric(cos_theta_i, self.eta);
-        if cos_theta_i < 0.0 {
-            Some(1.0 - r)
-        } else {
-            Some(r)
+    fn sampling_pdf(&self, wo: Vector3, wi: Vector3, path_type: PathType) -> Option<f64> {
+        match path_type {
+            PathType::Camera => self.sampling_pdf_internal(wo, wi),
+            PathType::Light => self.sampling_pdf_internal(wi, wo),
         }
     }
 
@@ -417,11 +425,11 @@ mod tests {
         let expected = Vector3::new(f64::sin(theta_t), -f64::cos(theta_t), 0.0);
         let bxdf = DielectricBxdf::new(normal, scale, eta);
         let mut sampler = MockSampler::new();
-        let path_type = PathType::Light;
+        let path_type = PathType::Camera;
         sampler.add(0.5); // 0.5 > r
         let mut wt = bxdf.sample_direction(wi, path_type, &mut sampler).unwrap();
         assert!(wt.approx_eq(expected, 1e-5));
-        let mut pdf = bxdf.sampling_pdf(wt, PathType::Light).unwrap();
+        let mut pdf = bxdf.sampling_pdf(wi, wt, path_type).unwrap();
         let r = 0.0549528214871777;
         assert!(util::equals(pdf, 1.0 - r, 1e-5));
         let context = EvaluationContext {
@@ -432,7 +440,7 @@ mod tests {
         assert!(!e.is_black());
         sampler.add(0.04); // 0.04 < r
         wt = bxdf.sample_direction(wi, path_type, &mut sampler).unwrap();
-        pdf = bxdf.sampling_pdf(wt, path_type).unwrap();
+        pdf = bxdf.sampling_pdf(wi, wt, path_type).unwrap();
         assert!(util::equals(pdf, r, 1e-5));
         e = bxdf.evaluate(wt, wi, context);
         assert!(!e.is_black());
