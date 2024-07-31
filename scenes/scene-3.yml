@@ -1,11 +1,10 @@
 ---
 image:
-  width: 640
-  height: 480
+  width: 5120
+  height: 3840
   filter:
     type: box
   sample_clamp: 0.5
-  clamp: 200.0
 
 camera:
   type: pinhole
