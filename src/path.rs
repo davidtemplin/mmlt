@@ -50,7 +50,7 @@ pub struct Technique {
 impl Technique {
     pub fn sample(path_length: usize, sampler: &mut impl Sampler) -> Technique {
         let end = path_length as f64 + 1.0;
-        let r = sampler.sample(0.0..end);
+        let r = sampler.sample(1.0..end);
         let camera = r.floor() as usize;
         let light = path_length - camera;
         Technique::new(camera, light)
@@ -585,4 +585,92 @@ mod tests {
         let a = Contribution::acceptance(current, proposed);
         assert_eq!(a, 0.5);
     }
+
+    /*
+    #[test]
+    fn test_gpu() {
+        let scene =
+            Scene::load(String::from("/Users/david/Desktop/mmlt/scenes/scene-2.yml")).unwrap();
+        let technique = Technique::new(3, 1);
+        let mut interactions = VecDeque::new();
+        let camera_interaction = CameraInteraction {
+            camera: scene.camera.as_ref(),
+            geometry: Geometry {
+                point: Point3::new(50.0, 40.79999923706055, 220.0),
+                normal: Vector3::new(0.0, 0.0, -1.0),
+                direction: Vector3::new(
+                    -0.36581405997276306,
+                    -0.09223464131355286,
+                    -0.9261062741279602,
+                ),
+            },
+            pixel_coordinates: Vector2::new(0.0, 0.0),
+        };
+        interactions.push_front(Interaction::Camera(camera_interaction));
+
+        let object_interaction_1 = ObjectInteraction {
+            object: scene.objects[0].as_ref(),
+            geometry: Geometry {
+                point: Point3::new(1.0176239013671875, 28.449811935424805, 95.99468994140625),
+                normal: Vector3::new(
+                    -0.9999982118606567,
+                    -0.0012350187171250582,
+                    0.0014394691679626703,
+                ),
+                direction: Vector3::new(
+                    -0.36581405997276306,
+                    -0.09223464131355286,
+                    -0.9261062741279602,
+                ),
+            },
+            bsdf: OnceCell::new(),
+        };
+        interactions.push_back(Interaction::Object(object_interaction_1));
+
+        let object_interaction_2 = ObjectInteraction {
+            object: scene.objects[6].as_ref(),
+            geometry: Geometry {
+                point: Point3::new(30.91585922241211, 17.53809928894043, 55.45295715332031),
+                normal: Vector3::new(
+                    -0.9542068839073181,
+                    -0.12309502065181732,
+                    0.27264782786369324,
+                ),
+                direction: Vector3::new(
+                    0.5800725221633911,
+                    -0.2117042988538742,
+                    -0.786573052406311,
+                ),
+            },
+            bsdf: OnceCell::new(),
+        };
+        interactions.push_back(Interaction::Object(object_interaction_2));
+
+        let light_interaction = LightInteraction {
+            light: scene.lights[0].as_ref(),
+            geometry: Geometry {
+                point: Point3::new(8.662123680114746, 66.57731628417969, 46.85707473754883),
+                normal: Vector3::new(
+                    -0.2229793518781662,
+                    -0.5704475045204163,
+                    -0.7904869914054871,
+                ),
+                direction: Vector3::new(
+                    -0.6243391036987305,
+                    0.31962957978248596,
+                    -0.712767481803894,
+                ),
+            },
+        };
+        interactions.push_back(Interaction::Light(light_interaction));
+
+        let path = Path::connect(&mut interactions, technique).unwrap();
+
+        println!("throughput = {:?}", path.throughput());
+        println!("pdf = {:?}", path.pdf());
+        println!("MIS weight = {}", path.weight());
+        println!("beta = {:?}", path.throughput() / path.pdf());
+        println!("contribution = {:?}", path.contribution());
+    }
+    */
 }

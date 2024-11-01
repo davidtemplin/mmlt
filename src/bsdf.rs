@@ -116,9 +116,12 @@ impl Bxdf for DiffuseBrdf {
         None
     }
 
-    fn pdf(&self, wo: Vector3, wi: Vector3, _: PathType) -> Option<f64> {
+    fn pdf(&self, wo: Vector3, wi: Vector3, path_type: PathType) -> Option<f64> {
         let p = if util::same_hemisphere(self.normal, wo, wi) {
-            util::abs_cos_theta(self.normal, wi) / PI
+            match path_type {
+                PathType::Camera => util::abs_cos_theta(self.normal, wi) / PI,
+                PathType::Light => util::abs_cos_theta(self.normal, wo) / PI,
+            }
         } else {
             0.0
         };
